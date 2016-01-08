@@ -13,7 +13,7 @@ var ObjectId = require('mongodb').ObjectID;
 /*
 //ENTWICKLUNG: löscht beim serverstart alle gespeicherten karten
 var removeAll = function(db, callback) {
-	db.collection('saved').deleteMany( {}, function(err, results) {
+	db.collection('groups').deleteMany( {}, function(err, results) {
 		callback();
 	});
 };
@@ -217,6 +217,102 @@ io.on('connection', function(socket){
 				db.close();
 			});
 		});
+	});
+	
+	//registrieren einer gruppe
+	socket.on('createGroup', function(msg){
+		//stellt sicher das felder nicht leer sind
+		if ((msg.name != '') && (msg.pw != '')) {
+			var createGroup = function(db, callback) {
+				var cursor = db.collection('groups').find( { "name": msg.name } );
+				cursor.count(function(err, doc) {
+					assert.equal(err, null);
+					if (doc == 0) {
+						var member = [];
+						var admin = [];
+						member.push(msg.user);
+						admin.push(msg.user);
+						db.collection('groups').insertOne( {
+							'name' : msg.name,
+							'pw' : msg.pw,
+							'member' : member,
+							'admin' : admin
+						},
+						function(err, result) {
+							assert.equal(err, null);
+							//console.log('registrierung erfolgreich');
+							callback(result);
+						});
+						io.sockets.connected[socket.id].emit('createGroupSuccess');
+					} else {
+						io.sockets.connected[socket.id].emit('createGroupFailed');
+						//console.log('registrierung fehlgeschlagen');
+					}
+				});
+			};
+			MongoClient.connect(url, function(err, db) {
+				assert.equal(null, err);
+				createGroup(db, function() {
+					db.close();
+				});
+			});
+		} else {
+			io.sockets.connected[socket.id].emit('createGroupFailed');
+			//console.log('registrierung fehlgeschlagen');
+		}
+	});
+	
+	//einer gruppe beitreten
+	socket.on('authGroup', function(msg) {
+		//stellt sicher das felder nicht leer sind
+		if ((msg.name != '') && (msg.pw != '')) {
+			//durchsucht die collection 'groups' nach der entsprechenden gruppe
+			var findGroup = function(db, callback) {
+				var cursor = db.collection('groups').find( { "name": msg.name } );
+				cursor.each(function(err, doc) {
+					assert.equal(err, null);
+					//prüft ob gruppe existiert und stellt sicher das der user noch nicht eingetragen wurde
+					if ((doc != null) || (doc.member.indexOf(msg.user) != -1)) {
+						if (doc.pw != msg.pw) {
+							io.sockets.connected[socket.id].emit('authGroupFailed');
+							//console.log('anmeldung fehlgeschlagen');
+						} else {
+							//user wird in 'member' array eingetragen
+							var updateMember = function(db, callback) {
+								db.collection('groups').updateOne(
+									doc,
+									{
+										$push: { member: msg.user }
+									}, function(err, results) {
+									//console.log(results);
+									callback();
+								});
+							};
+							MongoClient.connect(url, function(err, db) {
+								assert.equal(null, err);
+								updateMember(db, function() {
+									db.close();
+								});
+							});
+							//erfolgreich beigetreten
+							io.sockets.connected[socket.id].emit('authGroupSuccess');
+							//console.log('anmeldung erfolgreich');
+						}
+					} else {
+						callback();
+					}
+				});
+			};
+			MongoClient.connect(url, function(err, db) {
+				assert.equal(null, err);
+				findGroup(db, function() {
+					db.close();
+				});
+			});
+		} else {
+			io.sockets.connected[socket.id].emit('authFailed');
+			console.log('login fehlgeschlagen');
+		} 
 	});
 	
 	/*
