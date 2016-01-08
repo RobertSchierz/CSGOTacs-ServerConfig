@@ -5,7 +5,7 @@ var io = require('socket.io')(http);
 //variablen für mongodb
 var MongoClient = require('mongodb').MongoClient;
 var assert = require('assert');
-//enthält login und url/datenbank
+//datei enthält zugangsdaten
 var mongoAccess = require('./mongodb.js');
 var url = mongoAccess.url;
 var ObjectId = require('mongodb').ObjectID;
@@ -39,7 +39,6 @@ io.on('connection', function(socket){
 	socket.on('disconnect', function(){
 		//console.log('client getrennt');
 	});
-	
 	//empfang und ausführung einer registrierung
 	socket.on('reg', function(msg){
 		//stellt sicher das felder nicht leer sind
@@ -60,9 +59,10 @@ io.on('connection', function(socket){
 							callback(result);
 						});
 						io.sockets.connected[socket.id].emit('regSuccess');
+						//console.log('registrierung erfolgreich');
 					} else {
 						io.sockets.connected[socket.id].emit('regFailed');
-						console.log('fehlgeschlagen');
+						//console.log('registrierung fehlgeschlagen');
 					}
 				});
 			};
@@ -74,7 +74,7 @@ io.on('connection', function(socket){
 			});
 		} else {
 			io.sockets.connected[socket.id].emit('regFailed');
-			console.log('fehlgeschlagen');
+			//console.log('registrierung fehlgeschlagen');
 		}
 	});
 	
@@ -91,7 +91,7 @@ io.on('connection', function(socket){
 						if (doc.pw != msg.pw) {
 							//authentifizierung fehlgeschlagen
 							io.sockets.connected[socket.id].emit('authFailed');
-							console.log('login fehlgeschlagen');
+							//console.log('login fehlgeschlagen');
 						} else {
 							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 							var updateUserId = function(db, callback) {
@@ -116,7 +116,7 @@ io.on('connection', function(socket){
 							};
 							//authentifizierung erfolgreich
 							io.sockets.connected[socket.id].emit('authSuccess', answer);
-							console.log('login erfolgreich');
+							//console.log('login erfolgreich');
 						}
 					} else {
 						callback();
@@ -131,33 +131,13 @@ io.on('connection', function(socket){
 			});
 		} else {
 			io.sockets.connected[socket.id].emit('authFailed');
-			console.log('login fehlgeschlagen');
+			//console.log('login fehlgeschlagen');
 		} 
 	});
 	
 	//speichern einer map
 	socket.on('createMap', function(msg){
 		var createMap = function(db, callback) {
-			/*
-			var user;
-			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "clientid": socket.id } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						user = doc.user;
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findUser(db, function() {
-					db.close();
-				});
-			});
-			*/
 			db.collection('saved').insertOne( {
 				'id' : msg.id,
 				'user' : msg.user,
@@ -218,12 +198,6 @@ io.on('connection', function(socket){
 			});
 		});
 	});
-	
-	/*
-	socket.on('jsonClient', function(msg){
-		socket.broadcast.emit('json', msg);
-	});
-	*/
 });
 
 http.listen(63379, function(){
