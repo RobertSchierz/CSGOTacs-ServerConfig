@@ -14,7 +14,7 @@ Node.js Server zur Gruppenverwaltung und Echtzeitübertragung von Pixelkoordinat
 
 Die Hauptpunkte entsprechen den Anfragen an den Server, die eingerückten Punkte den Antworten an den Client. Das dazugehörige JSON zeigt die erwartetet bzw. die zurückgegebenen Werte.
 
-####reg
+###reg
 Registrierung eines Benutzers
 > * reg
         {
@@ -29,7 +29,7 @@ Registrierung eines Benutzers
         {
         }
 
-####auth
+###auth
 Login eines Benutzers
 > * auth
         {
@@ -44,7 +44,7 @@ Login eines Benutzers
         {
         }
 
-####createMap
+###createMap
 Speichern einer Taktik
 > * createMap
         {
@@ -56,7 +56,7 @@ Speichern einer Taktik
             y : '[] Y-Koordinaten'
         }
 
-####getMaps
+###getMaps
 Gibt dem Client alle vom Benutzer gespeicherten Taktiken zurück
 > * getMaps
         {
