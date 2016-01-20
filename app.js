@@ -207,6 +207,47 @@ io.on('connection', function(socket){
 		} 
 	});
 	
+	//namen einer taktik ändern
+	socket.on('changeMapName', function(msg) {
+		//stellt sicher das felder nicht leer sind
+		if ((msg.id != '') && (msg.name != '')) {
+			var findMap = function(db, callback) {
+				var cursor = db.collection('saved').find( { "id": msg.id } );
+				cursor.each(function(err, doc) {
+					assert.equal(err, null);
+					if (doc != null) {
+						var updateName = function(db, callback) {
+							db.collection('saved').updateOne(
+								doc,
+								{
+									$set: { 'name' : msg.name }
+								}, function(err, results) {
+								callback();
+							});
+						};
+						MongoClient.connect(url, function(err, db) {
+							assert.equal(null, err);
+							updateName(db, function() {
+								db.close();
+							});
+						});
+						io.sockets.connected[socket.id].emit('changeMapNameSuccess');
+					} else {
+						callback();
+					}
+				});
+			};
+			MongoClient.connect(url, function(err, db) {
+				assert.equal(null, err);
+				findMap(db, function() {
+					db.close();
+				});
+			});
+		} else {
+			io.sockets.connected[socket.id].emit('changeMapNameFailed');
+		} 
+	});
+	
 	socket.on('deleteMap', function(msg) {
 		//stellt sicher das felder nicht leer sind
 		if (msg.id != '') {

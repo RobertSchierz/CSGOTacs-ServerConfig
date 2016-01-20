@@ -89,24 +89,22 @@ Speichern einer Taktik
 >> ``` 
   
 ###changeMap
-Ändern einer Taktik
-> * changeMap  
+Namen einer Taktik ändern
+> * changeMapName  
 > ``` 
 > {  
 >     id : 'ID der Taktik',  
->     drag : '[] Bestimmt für jede Koordinate ob sie Punkt oder Teil einer Linie ist',  
->     x : '[] X-Koordinaten',  
->     y : '[] Y-Koordinaten'  
+>     name : 'Neuer Name der Taktik'
 > }  
 > ``` 
   
->> * changeMapSuccess  
+>> * changeMapNameSuccess  
 >> ``` 
 >> {  
 >> }  
 >> ``` 
   
->> * changeMapFailed  
+>> * changeMapNameFailed  
 >> ``` 
 >> {  
 >> }  
