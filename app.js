@@ -28,15 +28,29 @@ MongoClient.connect(url, function(err, db) {
 		db.close();
 	});
 });
+*/
 
 //ENTWICKLUNG: stellt index.html für testseite zur verfügung
 app.get('/', function(req, res){
 	res.sendFile('index.html', {root: __dirname});
 });
-*/
 
 //client verbindet sich
 io.on('connection', function(socket){
+	function result(answer){
+		var answer = {
+			'status' : answer.status,
+			'user' : answer.user || null,
+			'member' : answer.member || null,
+			'admin' : answer.admin || null,
+			'mods' : answer.mods || null,
+			'maps' : answer.maps || null,
+			'name' : answer.name || null,
+			'group' : answer.group || null,
+			'groups' : answer.groups || null
+		};
+		io.sockets.connected[socket.id].emit('status', answer);
+	};
 	//client trennt verbindung
 	socket.on('disconnect', function(){
 		socket.leave('appTest');
@@ -59,9 +73,13 @@ io.on('connection', function(socket){
 							assert.equal(err, null);
 							callback(result);
 						});
-						io.sockets.connected[socket.id].emit('regSuccess');
+						result({
+							'status' : 'regSuccess'
+						});
 					} else {
-						io.sockets.connected[socket.id].emit('regFailed');
+						result({
+							'status' : 'regFailed'
+						});
 					}
 				});
 			};
@@ -72,7 +90,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('regFailed');
+			result({
+				'status' : 'regFailed'
+			});
 		}
 	});
 	
@@ -88,7 +108,9 @@ io.on('connection', function(socket){
 					if (doc != null) {
 						if (doc.pw != msg.pw) {
 							//authentifizierung fehlgeschlagen
-							io.sockets.connected[socket.id].emit('authFailed');
+							result({
+								'status' : 'authFailed'
+							});
 						} else {
 							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 							var updateUserId = function(db, callback) {
@@ -107,11 +129,11 @@ io.on('connection', function(socket){
 									db.close();
 								});
 							});
-							var answer = {
-								'user' : doc.user
-							};
 							//authentifizierung erfolgreich
-							io.sockets.connected[socket.id].emit('authSuccess', answer);
+							result({
+								'status' : 'authSuccess',
+								'user' : msg.user
+							});
 						}
 					} else {
 						callback();
@@ -125,7 +147,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('authFailed');
+			result({
+				'status' : 'authFailed'
+			});
 		} 
 	});
 	
@@ -160,9 +184,13 @@ io.on('connection', function(socket){
 					db.close();
 				});
 			});
-			io.sockets.connected[socket.id].emit('createMapSuccess');
+			result({
+				'status' : 'createMapSuccess'
+			});
 		} else {
-			io.sockets.connected[socket.id].emit('createMapFailed');
+			result({
+				'status' : 'createMapFailed'
+			});
 		}
 	});
 	
@@ -190,8 +218,13 @@ io.on('connection', function(socket){
 								db.close();
 							});
 						});
-						io.sockets.connected[socket.id].emit('changeSuccess');
+						result({
+							'status' : 'changeMapSuccess'
+						});
 					} else {
+						result({
+							'status' : 'changeMapFailed'
+						});
 						callback();
 					}
 				});
@@ -203,7 +236,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('changeFailed');
+			result({
+				'status' : 'changeMapFailed'
+			});
 		} 
 	});
 	
@@ -231,8 +266,13 @@ io.on('connection', function(socket){
 								db.close();
 							});
 						});
-						io.sockets.connected[socket.id].emit('changeMapNameSuccess');
+						result({
+							'status' : 'changeMapNameSuccess'
+						});
 					} else {
+						result({
+							'status' : 'changeMapNameFailed'
+						});
 						callback();
 					}
 				});
@@ -244,7 +284,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('changeMapNameFailed');
+			result({
+				'status' : 'changeMapNameFailed'
+			});
 		} 
 	});
 	
@@ -267,9 +309,13 @@ io.on('connection', function(socket){
 								db.close();
 							});
 						});
-						io.sockets.connected[socket.id].emit('deleteMapSuccess');
+						result({
+							'status' : 'deleteMapSuccess'
+						});
 					} else {
-						io.sockets.connected[socket.id].emit('deleteMapFailed');
+						result({
+							'status' : 'deleteMapFailed'
+						});
 						callback();
 					}
 				});
@@ -281,7 +327,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('deleteMapFailed');
+			result({
+				'status' : 'deleteMapFailed'
+			});
 		} 
 	});
 	
@@ -311,7 +359,10 @@ io.on('connection', function(socket){
 						});
 					} else {
 						//übergibt dem client das maps array
-						io.sockets.connected[socket.id].emit('provideMaps', maps);
+						result({
+							'status' : 'provideMaps',
+							'maps' : maps
+						});
 						callback();
 					}
 				});
@@ -354,9 +405,13 @@ io.on('connection', function(socket){
 							assert.equal(err, null);
 							callback(result);
 						});
-						io.sockets.connected[socket.id].emit('createGroupSuccess');
+						result({
+							'status' : 'createGroupSuccess'
+						});
 					} else {
-						io.sockets.connected[socket.id].emit('createGroupFailed');
+						result({
+							'status' : 'createGroupFailed'
+						});
 					}
 				});
 			};
@@ -367,7 +422,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('createGroupFailed');
+			result({
+				'status' : 'createGroupFailed'
+			});
 		}
 	});
 	
@@ -384,7 +441,9 @@ io.on('connection', function(socket){
 					if(doc != null) {
 						if (doc.member.indexOf(msg.user) <= -1) {
 							if (doc.pw != msg.pw) {
-								io.sockets.connected[socket.id].emit('authGroupFailed');
+								result({
+									'status' : 'authGroupFailed'
+								});
 							} else {
 								//user wird in 'member' array eingetragen
 								var updateMember = function(db, callback) {
@@ -402,15 +461,17 @@ io.on('connection', function(socket){
 										db.close();
 									});
 								});
-								var answer = {
+								result({
+									'status' : 'authGroupSuccess',
 									'member' : doc.member,
 									'admin' : doc.admin,
 									'mods' : doc.mods
-								}
-								io.sockets.connected[socket.id].emit('authGroupSuccess', answer);
+								})
 							}
 						} else {
-							io.sockets.connected[socket.id].emit('authGroupFailed');
+							result({
+								'status' : 'authGroupFailed'
+							});
 						}
 					} else {
 						callback();
@@ -424,7 +485,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('authFailed');
+			result({
+				'status' : 'authGroupFailed'
+			});
 		} 
 	});
 	
@@ -444,7 +507,10 @@ io.on('connection', function(socket){
 							'mods' : doc.mods
 						});
 					} else {
-						io.sockets.connected[socket.id].emit('provideGroups', groups);
+						result({
+							'status' : 'provideGroups',
+							'groups' : groups
+						});
 						callback();
 					}
 				});
@@ -492,9 +558,15 @@ io.on('connection', function(socket){
 									db.close();
 								});
 							});
-							io.sockets.connected[socket.id].emit('leaveGroupSuccess');
+							result({
+								'status' : 'leaveGroupSuccess',
+								'group' : doc.name
+							});
 						} else {
-							io.sockets.connected[socket.id].emit('leaveGroupFailed');
+							result({
+								'status' : 'leaveGroupFailed',
+								'group' : doc.name
+							});
 						}
 					} else {
 						callback();
@@ -508,7 +580,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('leaveGroupFailed');
+			result({
+				'status' : 'leaveGroupFailed'
+			});
 		} 
 	});
 	
@@ -540,9 +614,13 @@ io.on('connection', function(socket){
 									db.close();
 								});
 							});
-							io.sockets.connected[socket.id].emit('setGroupModSuccess');
+							result({
+								'status' : 'setGroupModSuccess'
+							});
 						} else {
-							io.sockets.connected[socket.id].emit('setGroupModFailed');
+							result({
+								'status' : 'setGroupModFailed'
+							});
 						}
 					} else {
 						callback();
@@ -556,7 +634,72 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('setGroupModFailed');
+			result({
+				'status' : 'setGroupModFailed'
+			});
+		} 
+	});
+	
+	//einen user aus der gruppe entfernen
+	socket.on('kickUser', function(msg) {
+		//stellt sicher das felder nicht leer sind
+		if ((msg.user != '') && (msg.name != '') && (msg.kick != '')) {
+			//durchsucht die collection 'groups' nach der entsprechenden gruppe
+			var findGroup = function(db, callback) {
+				var cursor = db.collection('groups').find( { "name": msg.name } );
+				cursor.each(function(err, doc) {
+					assert.equal(err, null);
+					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
+					if(doc != null) {
+						if ((doc.admin == msg.user) || (doc.mods.indexOf(msg.user) > -1)) {
+							//user wird aus gruppe entfernt
+							var updateMember = function(db, callback) {
+								db.collection('groups').updateOne(
+									doc,
+									{
+										$pull: { member: msg.kick }
+									}, function(err, results) {
+									callback();
+								});
+								if (doc.mods.indexOf(msg.kick) > -1) {
+									db.collection('groups').updateOne(
+										doc,
+										{
+											$pull: { mods: msg.kick }
+										}, function(err, results) {
+										callback();
+									});
+								}
+							};
+							MongoClient.connect(url, function(err, db) {
+								assert.equal(null, err);
+								updateMember(db, function() {
+									db.close();
+								});
+							});
+							result({
+								'status' : 'kickUserSuccess'
+							});
+						} else {
+							result({
+								'status' : 'kickUserFailed'
+							});
+						}
+					} else {
+						callback();
+					}
+				});
+			};
+			MongoClient.connect(url, function(err, db) {
+				assert.equal(null, err);
+				findGroup(db, function() {
+					db.close();
+				});
+			});
+		} else {
+			result({
+				'status' : 'kickUserFailed'
+			});
 		} 
 	});
 	
@@ -581,9 +724,13 @@ io.on('connection', function(socket){
 									db.close();
 								});
 							});
-							io.sockets.connected[socket.id].emit('deleteGroupSuccess');
+							result({
+								'status' : 'deleteGroupSuccess'
+							});
 						} else {
-							io.sockets.connected[socket.id].emit('deleteGroupFailed');
+							result({
+								'status' : 'deleteGroupFailed'
+							});
 						}
 					} else {
 						callback();
@@ -597,7 +744,9 @@ io.on('connection', function(socket){
 				});
 			});
 		} else {
-			io.sockets.connected[socket.id].emit('deleteGroupFailed');
+			result({
+				'status' : 'deleteGroupFailed'
+			});
 		} 
 	});
 	
