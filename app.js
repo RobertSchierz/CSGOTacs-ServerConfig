@@ -10,6 +10,29 @@ var mongoAccess = require('./mongodb.js');
 var url = mongoAccess.url;
 var ObjectId = require('mongodb').ObjectID;
 
+var mongo = {
+	'MongoClient' : MongoClient,
+	'assert' : assert,
+	'mongoAccess' : mongoAccess,
+	'url' : url,
+	'ObjectId' : ObjectId
+};
+
+var user = require('./data/user.js');
+var map = require('./data/map.js');
+var group = require('./data/group.js');
+var result = require('./data/result.js');
+
+var basicAuth = require('basic-auth');
+
+var authDevelop = function(data){
+    if (!data || data.name != 'developer' || user.data != '123') {
+        return false
+    }else{
+        return true
+    }
+};
+
 /*
 //ENTWICKLUNG: löscht beim serverstart alle gespeicherten karten
 var removeAll = function(db, callback) {
@@ -17,6 +40,9 @@ var removeAll = function(db, callback) {
 		callback();
 	});
 	db.collection('groups').deleteMany( {}, function(err, results) {
+		callback();
+	});
+	db.collection('user').deleteMany( {}, function(err, results) {
 		callback();
 	});
 };
@@ -35,719 +61,131 @@ app.get('/', function(req, res){
 	res.sendFile('index.html', {root: __dirname});
 });
 
+app.post('/status', function(request, response){
+	//if (authDevelop(basicAuth(request))){
+		console.log(request.body.status);
+		if (request.body.status == 'reg') {
+			var data = {
+				'user' : request.body.user,
+				'pw' : request.body.pw
+			};
+			response.status(user.regRest(data, mongo));
+		}
+	//}
+});
+
+module.exports = {
+	result: function(status, socketid) {
+		var result = require('./data/result.js');
+		io.sockets.connected[socketid].emit('status', result.setStatus(status));
+	},
+	
+	setExpire: function(date) {
+		var DAYS = 90;
+		var expireDate = new Date(date.setDate(date.getDate() + DAYS));
+		return expireDate;
+	}
+};
+
 //client verbindet sich
 io.on('connection', function(socket){
-	function result(answer){
-		var answer = {
-			'status' : answer.status,
-			'user' : answer.user || null,
-			'member' : answer.member || null,
-			'admin' : answer.admin || null,
-			'mods' : answer.mods || null,
-			'maps' : answer.maps || null,
-			'name' : answer.name || null,
-			'group' : answer.group || null,
-			'groups' : answer.groups || null
-		};
-		io.sockets.connected[socket.id].emit('status', answer);
-	};
+	
 	//client trennt verbindung
 	socket.on('disconnect', function(){
-		socket.leave('appTest');
 	});
+	/*
 	//empfang und ausführung einer registrierung
 	socket.on('reg', function(msg){
-		//stellt sicher das felder nicht leer sind
-		if ((msg.user != '') && (msg.pw != '')) {
-			var regUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
-				cursor.count(function(err, doc) {
-					assert.equal(err, null);
-					if (doc == 0) {
-						db.collection('user').insertOne( {
-							'clientid' : socket.id,
-							'user' : msg.user,
-							'pw' : msg.pw
-						},
-						function(err, result) {
-							assert.equal(err, null);
-							callback(result);
-						});
-						result({
-							'status' : 'regSuccess'
-						});
-					} else {
-						result({
-							'status' : 'regFailed'
-						});
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				regUser(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'regFailed'
-			});
-		}
+		user.reg(msg, socket.id, mongo);
+	});
+	*/
+	//verarbeitung eines logins
+	socket.on('auth', function(msg) {
+		user.auth(msg, socket.id, mongo);
+	});
+	
+	socket.on('reg', function(msg) {
+		user.reg(msg, socket.id, mongo);
+	});
+	
+	//empfang und ausführung einer registrierung
+	socket.on('changeName', function(msg){
+		user.changeName(msg, socket.id, mongo);
 	});
 	
 	//verarbeitung eines logins
-	socket.on('auth', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.user != '') && (msg.pw != '')) {
-			//durchsucht die collection 'user' nach passendem benutzer/passwort
-			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						if (doc.pw != msg.pw) {
-							//authentifizierung fehlgeschlagen
-							result({
-								'status' : 'authFailed'
-							});
-						} else {
-							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
-							var updateUserId = function(db, callback) {
-								db.collection('user').updateOne(
-									doc,
-									{
-										$set: { "clientid": socket.id },
-										$currentDate: { "login": true }
-									}, function(err, results) {
-									callback();
-								});
-							};
-							MongoClient.connect(url, function(err, db) {
-								assert.equal(null, err);
-								updateUserId(db, function() {
-									db.close();
-								});
-							});
-							//authentifizierung erfolgreich
-							result({
-								'status' : 'authSuccess',
-								'user' : msg.user
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findUser(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'authFailed'
-			});
-		} 
+	socket.on('changePW', function(msg) {
+		user.changePW(msg, socket.id, mongo);
 	});
 	
 	//speichern einer taktik
 	socket.on('createMap', function(msg){
-		if ( msg.id != null && msg.user != null && msg.map != null && msg.name != null ) {
-			var createMap = function(db, callback) {
-				var groupName;
-				if (msg.group != undefined) {
-					groupName = msg.group;
-				} else {
-					groupName = '';
-				}
-				db.collection('saved').insertOne( {
-					'id' : msg.id,
-					'user' : msg.user,
-					'map' : msg.map,
-					'name' : msg.name,
-					'group' : groupName,
-					'drag' : msg.drag,
-					'x' : msg.x,
-					'y' : msg.y
-				},
-				function(err, result) {
-					assert.equal(err, null);
-					callback(result);
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				createMap(db, function() {
-					db.close();
-				});
-			});
-			result({
-				'status' : 'createMapSuccess'
-			});
-		} else {
-			result({
-				'status' : 'createMapFailed'
-			});
-		}
+		map.createMap(msg, socket.id, mongo);
+	});
+	
+	//taktik einer gruppe zuordnen
+	socket.on('bindMap', function(msg) {
+		map.bindMap(msg, socket.id, mongo);
 	});
 	
 	//ändern einer taktik
 	socket.on('changeMap', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if (msg.id != '') {
-			var findMap = function(db, callback) {
-				var cursor = db.collection('saved').find( { "id": msg.id } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						var updateXY = function(db, callback) {
-							db.collection('saved').updateOne(
-								doc,
-								{
-									$set: { 'drag' : msg.drag, 'x' : msg.x, 'y' : msg.y }
-								}, function(err, results) {
-								callback();
-							});
-						};
-						MongoClient.connect(url, function(err, db) {
-							assert.equal(null, err);
-							updateXY(db, function() {
-								db.close();
-							});
-						});
-						result({
-							'status' : 'changeMapSuccess'
-						});
-					} else {
-						result({
-							'status' : 'changeMapFailed'
-						});
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findMap(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'changeMapFailed'
-			});
-		} 
+		map.changeMap(msg, socket.id, mongo);
 	});
 	
 	//namen einer taktik ändern
 	socket.on('changeMapName', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.id != '') && (msg.name != '')) {
-			var findMap = function(db, callback) {
-				var cursor = db.collection('saved').find( { "id": msg.id } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						var updateName = function(db, callback) {
-							db.collection('saved').updateOne(
-								doc,
-								{
-									$set: { 'name' : msg.name }
-								}, function(err, results) {
-								callback();
-							});
-						};
-						MongoClient.connect(url, function(err, db) {
-							assert.equal(null, err);
-							updateName(db, function() {
-								db.close();
-							});
-						});
-						result({
-							'status' : 'changeMapNameSuccess'
-						});
-					} else {
-						result({
-							'status' : 'changeMapNameFailed'
-						});
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findMap(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'changeMapNameFailed'
-			});
-		} 
+		map.changeMapName(msg, socket.id, mongo);
 	});
 	
 	socket.on('deleteMap', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if (msg.id != '') {
-			var findMap = function(db, callback) {
-				var cursor = db.collection('saved').find( { 'id': parseInt(msg.id) } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						var deleteMap = function(db, callback) {
-							db.collection('saved').deleteOne(
-								doc
-							);
-						};
-						MongoClient.connect(url, function(err, db) {
-							assert.equal(null, err);
-							deleteMap(db, function() {
-								db.close();
-							});
-						});
-						result({
-							'status' : 'deleteMapSuccess'
-						});
-					} else {
-						result({
-							'status' : 'deleteMapFailed'
-						});
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findMap(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'deleteMapFailed'
-			});
-		} 
+		map.deleteMap(msg, socket.id, mongo);
 	});
 	
 	//stellt client die vom entsprechenden benutzer gespeicherten taktiken zur verfügung
 	socket.on('getMaps', function(msg){
-		var maps = [];
-		var getMaps = function(db, callback) {
-			//alle vom benutzer erstellten maps auslesen und in array pushen
-			var findMaps = function(db, callback) {
-				var cursor;
-				if (msg.user != undefined) {
-					cursor = db.collection('saved').find( { "user": msg.user } );
-				} else if (msg.group != undefined) {
-					cursor = db.collection('saved').find( { "group": msg.group } );
-				}
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						maps.push({
-							'id' : doc.id,
-							'map' : doc.map,
-							'name' : doc.name,
-							'group' : doc.group,
-							'drag' : doc.drag,
-							'x' : doc.x,
-							'y' : doc.y
-						});
-					} else {
-						//übergibt dem client das maps array
-						result({
-							'status' : 'provideMaps',
-							'maps' : maps
-						});
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findMaps(db, function() {
-					db.close();
-				});
-			});
-		};
-		MongoClient.connect(url, function(err, db) {
-			assert.equal(null, err);
-			getMaps(db, function() {
-				db.close();
-			});
-		});
+		console.log(msg);
+		map.getMaps(msg, socket.id, mongo);
 	});
 	
 	//registrieren einer gruppe
 	socket.on('createGroup', function(msg){
-		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.pw != '')) {
-			var createGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.count(function(err, doc) {
-					assert.equal(err, null);
-					if (doc == 0) {
-						var member = [];
-						var mods = [];
-						member.push(msg.user);
-						db.collection('groups').insertOne( {
-							'name' : msg.name,
-							'pw' : msg.pw,
-							'member' : member,
-							'admin' : msg.user,
-							'mods' : mods
-						},
-						function(err, result) {
-							assert.equal(err, null);
-							callback(result);
-						});
-						result({
-							'status' : 'createGroupSuccess'
-						});
-					} else {
-						result({
-							'status' : 'createGroupFailed'
-						});
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				createGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'createGroupFailed'
-			});
-		}
+		group.createGroup(msg, socket.id, mongo);
 	});
 	
 	//einer gruppe beitreten
 	socket.on('authGroup', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.pw != '')) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
-			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					//prüft ob gruppe existiert und stellt sicher das der user noch nicht eingetragen wurde
-					if(doc != null) {
-						if (doc.member.indexOf(msg.user) <= -1) {
-							if (doc.pw != msg.pw) {
-								result({
-									'status' : 'authGroupFailed'
-								});
-							} else {
-								//user wird in 'member' array eingetragen
-								var updateMember = function(db, callback) {
-									db.collection('groups').updateOne(
-										doc,
-										{
-											$push: { member: msg.user }
-										}, function(err, results) {
-										callback();
-									});
-								};
-								MongoClient.connect(url, function(err, db) {
-									assert.equal(null, err);
-									updateMember(db, function() {
-										db.close();
-									});
-								});
-								result({
-									'status' : 'authGroupSuccess',
-									'member' : doc.member,
-									'admin' : doc.admin,
-									'mods' : doc.mods
-								})
-							}
-						} else {
-							result({
-								'status' : 'authGroupFailed'
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'authGroupFailed'
-			});
-		} 
+		group.authGroup(msg, socket.id, mongo);
 	});
 	
 	//gibt dem client alle gruppen des benutzers zurück
 	socket.on('getGroups', function(msg){
-		var groups = [];
-		var getGroups = function(db, callback) {
-			var findGroups = function(db, callback) {
-				var cursor = db.collection('groups').find({ "member": msg.user })
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if (doc != null) {
-						groups.push({
-							'name' : doc.name,
-							'member' : doc.member,
-							'admin' : doc.admin,
-							'mods' : doc.mods
-						});
-					} else {
-						result({
-							'status' : 'provideGroups',
-							'groups' : groups
-						});
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroups(db, function() {
-					db.close();
-				});
-			});
-		};
-		MongoClient.connect(url, function(err, db) {
-			assert.equal(null, err);
-			getGroups(db, function() {
-				db.close();
-			});
-		});
+		group.getGroups(msg, socket.id, mongo);
 	});
 	
 	//eine gruppe verlassen
 	socket.on('leaveGroup', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
-			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					//prüft ob gruppe existiert und stellt sicher das der user ein mitglied ist
-					if(doc != null) {
-						if (doc.member.indexOf(msg.user) > -1) {
-							//user wird aus 'member' array entfernt
-							var updateMember = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$pull: { member: msg.user }
-									}, function(err, results) {
-									callback();
-								});
-							};
-							MongoClient.connect(url, function(err, db) {
-								assert.equal(null, err);
-								updateMember(db, function() {
-									db.close();
-								});
-							});
-							result({
-								'status' : 'leaveGroupSuccess',
-								'group' : doc.name
-							});
-						} else {
-							result({
-								'status' : 'leaveGroupFailed',
-								'group' : doc.name
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'leaveGroupFailed'
-			});
-		} 
+		group.leaveGroup(msg, socket.id, mongo);
 	});
 	
 	//einen user zum moderator machen
 	socket.on('setGroupMod', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
-			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
-					if(doc != null) {
-						if (doc.mods.indexOf(msg.user) <= -1) {
-							//user wird in 'mods' array eingetragen
-							var updateMods = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$push: { mods: msg.user }
-									}, function(err, results) {
-									callback();
-								});
-							};
-							MongoClient.connect(url, function(err, db) {
-								assert.equal(null, err);
-								updateMods(db, function() {
-									db.close();
-								});
-							});
-							result({
-								'status' : 'setGroupModSuccess'
-							});
-						} else {
-							result({
-								'status' : 'setGroupModFailed'
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'setGroupModFailed'
-			});
-		} 
+		group.setGroupMod(msg, socket.id, mongo);
+	});
+	
+	//einen moderator zum user machen
+	socket.on('unsetGroupMod', function(msg) {
+		group.unsetGroupMod(msg, socket.id, mongo);
 	});
 	
 	//einen user aus der gruppe entfernen
 	socket.on('kickUser', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.user != '') && (msg.name != '') && (msg.kick != '')) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
-			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
-					if(doc != null) {
-						if ((doc.admin == msg.user) || (doc.mods.indexOf(msg.user) > -1)) {
-							//user wird aus gruppe entfernt
-							var updateMember = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$pull: { member: msg.kick }
-									}, function(err, results) {
-									callback();
-								});
-								if (doc.mods.indexOf(msg.kick) > -1) {
-									db.collection('groups').updateOne(
-										doc,
-										{
-											$pull: { mods: msg.kick }
-										}, function(err, results) {
-										callback();
-									});
-								}
-							};
-							MongoClient.connect(url, function(err, db) {
-								assert.equal(null, err);
-								updateMember(db, function() {
-									db.close();
-								});
-							});
-							result({
-								'status' : 'kickUserSuccess'
-							});
-						} else {
-							result({
-								'status' : 'kickUserFailed'
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'kickUserFailed'
-			});
-		} 
+		group.kickUser(msg, socket.id, mongo);
 	});
 	
 	//eine gruppe löschen
 	socket.on('deleteGroup', function(msg) {
-		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
-			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				cursor.each(function(err, doc) {
-					assert.equal(err, null);
-					if(doc != null) {
-						if (doc.admin.indexOf(msg.user) > -1) {
-							var deleteGroup = function(db, callback) {
-								db.collection('groups').deleteOne(
-									doc);
-								};
-							MongoClient.connect(url, function(err, db) {
-								assert.equal(null, err);
-								deleteGroup(db, function() {
-									db.close();
-								});
-							});
-							result({
-								'status' : 'deleteGroupSuccess'
-							});
-						} else {
-							result({
-								'status' : 'deleteGroupFailed'
-							});
-						}
-					} else {
-						callback();
-					}
-				});
-			};
-			MongoClient.connect(url, function(err, db) {
-				assert.equal(null, err);
-				findGroup(db, function() {
-					db.close();
-				});
-			});
-		} else {
-			result({
-				'status' : 'deleteGroupFailed'
-			});
-		} 
+		group.deleteGroup(msg, socket.id, mongo);
 	});
 	
 	socket.on('appTest', function(){
@@ -756,6 +194,14 @@ io.on('connection', function(socket){
 	
 	socket.on('json', function(msg){
 		socket.broadcast.to('appTest').emit('json', msg);
+	});
+	
+	socket.on('joinGroupLive', function(msg) {
+		socket.join(msg);
+	});
+	
+	socket.on('broadcastGroupLive', function(msg) {
+		socket.broadcast.to(msg);
 	});
 	
 });

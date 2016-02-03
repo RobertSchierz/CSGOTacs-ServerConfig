@@ -17,7 +17,7 @@ Die Hauptpunkte entsprechen den Anfragen an den Server, die eingerückten Punkte
 ###reg
 Registrierung eines Benutzers
 > * reg  
-> ``` 
+> ```
 > {  
 >     'user' : 'Benutzername',  
 >     'pw' : 'Passwort'  
