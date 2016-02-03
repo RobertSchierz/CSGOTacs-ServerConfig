@@ -1,6 +1,7 @@
 module.exports = {
 	
 	expireMap: function(msg, mongo) {
+		//var mongo = require('../mongodb.js');
 		var send = require('../app.js');
 		var findMap = function(db, callback) {
 			if(msg.user != undefined) {
@@ -9,7 +10,6 @@ module.exports = {
 				var cursor = db.collection('saved').find( { "group": msg } );
 			}
 			cursor.each(function(err, doc) {
-				mongo.assert.equal(err, null);
 				if (doc != null) {
 					//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 					var updateMaps = function(db, callback) {
@@ -22,10 +22,8 @@ module.exports = {
 						});
 						
 					};
-					mongo.MongoClient.connect(mongo.url, function(err, db) {
-						mongo.assert.equal(null, err);
+					mongo(function(err, db) {
 						updateMaps(db, function() {
-							db.close();
 						});
 					});
 				} else {
@@ -33,15 +31,14 @@ module.exports = {
 				}
 			});
 		};
-		mongo.MongoClient.connect(mongo.url, function(err, db) {
-			mongo.assert.equal(null, err);
+		mongo(function(err, db) {
 			findMap(db, function() {
-				db.close();
 			});
 		});
 	},
 	
 	expire: function(msg, mongo) {
+		//var mongo = require('../mongodb.js');
 		var send = require('../app.js');
 		var collection = null;
 		//stellt sicher das felder nicht leer sind
@@ -55,7 +52,6 @@ module.exports = {
 				collection = 'groups';
 			}
 			cursor.each(function(err, doc) {
-				mongo.assert.equal(err, null);
 				if (doc != null) {
 					//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 					var update = function(db, callback) {
@@ -68,10 +64,8 @@ module.exports = {
 						});
 						
 					};
-					mongo.MongoClient.connect(mongo.url, function(err, db) {
-						mongo.assert.equal(null, err);
+					mongo(function(err, db) {
 						update(db, function() {
-							db.close();
 						});
 					});
 				} else {
@@ -79,10 +73,8 @@ module.exports = {
 				}
 			});
 		};
-		mongo.MongoClient.connect(mongo.url, function(err, db) {
-			mongo.assert.equal(null, err);
+		mongo(function(err, db) {
 			find(db, function() {
-				db.close();
 			});
 		});
 	}

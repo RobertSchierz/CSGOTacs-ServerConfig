@@ -2,26 +2,11 @@ var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
-//variablen für mongodb
-var MongoClient = require('mongodb').MongoClient;
-var assert = require('assert');
-//datei enthält zugangsdaten
-var mongoAccess = require('./mongodb.js');
-var url = mongoAccess.url;
-var ObjectId = require('mongodb').ObjectID;
-
-var mongo = {
-	'MongoClient' : MongoClient,
-	'assert' : assert,
-	'mongoAccess' : mongoAccess,
-	'url' : url,
-	'ObjectId' : ObjectId
-};
-
 var user = require('./data/user.js');
 var map = require('./data/map.js');
 var group = require('./data/group.js');
 var result = require('./data/result.js');
+var mongo = require('./mongodb.js');
 
 var basicAuth = require('basic-auth');
 

@@ -19,7 +19,6 @@ module.exports = {
 				maps.push(newMap);
 				db.collection('saved').insertOne(newMap,
 				function(err, result) {
-					mongo.assert.equal(err, null);
 					callback(result);
 				});
 				
@@ -35,10 +34,8 @@ module.exports = {
 				}, socketid);
 				
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				createMap(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -55,7 +52,6 @@ module.exports = {
 			var findMap = function(db, callback) {
 				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						var bindMap = function(db, callback) {
 							db.collection('saved').updateOne(
@@ -71,10 +67,8 @@ module.exports = {
 								'group' : msg.group
 							}, socketid);
 						};
-						mongo.MongoClient.connect(mongo.url, function(err, db) {
-							mongo.assert.equal(null, err);
+						mongo(function(err, db) {
 							bindMap(db, function() {
-								db.close();
 							});
 						});
 					} else if (cursor[0] != null) {
@@ -87,10 +81,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findMap(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -109,7 +101,6 @@ module.exports = {
 				var maps = [];
 				var cursor = db.collection('saved').find( { "id": msg.id } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						var updateXY = function(db, callback) {
 							maps.push(doc);
@@ -125,8 +116,7 @@ module.exports = {
 								'maps' : maps
 							}, socketid);
 						};
-						mongo.MongoClient.connect(mongo.url, function(err, db) {
-							mongo.assert.equal(null, err);
+						mongo(function(err, db) {
 							updateXY(db, function() {
 								db.close();
 							});
@@ -138,10 +128,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findMap(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -159,7 +147,6 @@ module.exports = {
 				var name;
 				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						name = doc.name;
 						var updateName = function(db, callback) {
@@ -176,10 +163,8 @@ module.exports = {
 								'name' : name
 							}, socketid);
 						};
-						mongo.MongoClient.connect(mongo.url, function(err, db) {
-							mongo.assert.equal(null, err);
+						mongo(function(err, db) {
 							updateName(db, function() {
-								db.close();
 							});
 						});
 					} else if (cursor[0] != null) {
@@ -192,10 +177,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findMap(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -212,7 +195,6 @@ module.exports = {
 			var findMap = function(db, callback) {
 				var cursor = db.collection('saved').find( { 'id': parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						var deleteMap = function(db, callback) {
 							db.collection('saved').deleteOne(
@@ -223,10 +205,8 @@ module.exports = {
 								'id' : msg.id
 							}, socketid);
 						};
-						mongo.MongoClient.connect(mongo.url, function(err, db) {
-							mongo.assert.equal(null, err);
+						mongo(function(err, db) {
 							deleteMap(db, function() {
-								db.close();
 							});
 						});
 					} else if (cursor[0] != null) {
@@ -238,10 +218,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findMap(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -264,7 +242,6 @@ module.exports = {
 					cursor = db.collection('saved').find( { "group": msg.group } );
 				}
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						maps.push({
 							'id' : doc.id,
@@ -285,17 +262,13 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findMaps(db, function() {
-					db.close();
 				});
 			});
 		};
-		mongo.MongoClient.connect(mongo.url, function(err, db) {
-			mongo.assert.equal(null, err);
+		mongo(function(err, db) {
 			getMaps(db, function() {
-				db.close();
 			});
 		});
 	}

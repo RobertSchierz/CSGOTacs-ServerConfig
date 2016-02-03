@@ -8,7 +8,6 @@ module.exports = {
 			var regUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
 				cursor.count(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc == 0) {
 						db.collection('user').insertOne( {
 							'user' : msg.user,
@@ -16,7 +15,6 @@ module.exports = {
 							'expireAt' : server.setExpire(new Date())
 						},
 						function(err, result) {
-							mongo.assert.equal(err, null);
 							callback(result);
 						});
 						expire.expire(msg, mongo);
@@ -32,10 +30,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				regUser(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -54,7 +50,6 @@ module.exports = {
 			var regUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
 				cursor.count(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc == 0) {
 						db.collection('user').insertOne( {
 							'user' : msg.user,
@@ -62,7 +57,6 @@ module.exports = {
 							'expireAt' : server.setExpire(new Date())
 						},
 						function(err, result) {
-							mongo.assert.equal(err, null);
 							callback(result);
 						});
 						expire.expire(msg, mongo);
@@ -72,10 +66,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				regUser(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -85,6 +77,7 @@ module.exports = {
 	
 	auth: function(msg, socketid, mongo) {
 		
+		//var mongo = require('../mongodb.js');
 		var server = require('../app.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
@@ -93,7 +86,6 @@ module.exports = {
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						if (doc.pw != msg.pw) {
 							//authentifizierung fehlgeschlagen
@@ -112,10 +104,8 @@ module.exports = {
 									'user' : msg.user
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateUser(db, function() {
-									db.close();
 								});
 							});
 						}
@@ -124,10 +114,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findUser(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -147,7 +135,6 @@ module.exports = {
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						if (doc.pw != msg.pw) {
 							//authentifizierung fehlgeschlagen
@@ -167,10 +154,8 @@ module.exports = {
 									'status' : 'changeNameSuccess'
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateUser(db, function() {
-									db.close();
 								});
 							});
 						}
@@ -182,10 +167,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findUser(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -205,7 +188,6 @@ module.exports = {
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						if (doc.pw != msg.pw) {
 							//authentifizierung fehlgeschlagen
@@ -225,8 +207,7 @@ module.exports = {
 									'status' : 'changePWSuccess'
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updatePW(db, function() {
 									db.close();
 								});
@@ -240,8 +221,7 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findUser(db, function() {
 					db.close();
 				});

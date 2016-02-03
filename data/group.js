@@ -9,7 +9,6 @@ module.exports = {
 			var createGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.count(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc == 0) {
 						var member = [];
 						var mods = [];
@@ -22,7 +21,6 @@ module.exports = {
 							'mods' : mods
 						},
 						function(err, result) {
-							mongo.assert.equal(err, null);
 							callback(result);
 						});
 						expire.expire(msg.name, mongo);
@@ -40,10 +38,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				createGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -61,7 +57,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					//prüft ob gruppe existiert und stellt sicher das der user noch nicht eingetragen wurde
 					if(doc != null) {
 						if (doc.member.indexOf(msg.user) <= -1) {
@@ -86,10 +81,8 @@ module.exports = {
 										'mods' : doc.mods
 									}, socketid)
 								};
-								mongo.MongoClient.connect(mongo.url, function(err, db) {
-									mongo.assert.equal(null, err);
+								mongo(function(err, db) {
 									updateMember(db, function() {
-										db.close();
 									});
 								});
 							}
@@ -103,10 +96,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -124,7 +115,6 @@ module.exports = {
 			var findGroups = function(db, callback) {
 				var cursor = db.collection('groups').find({ "member": msg.user })
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if (doc != null) {
 						groups.push({
 							'name' : doc.name,
@@ -143,17 +133,13 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroups(db, function() {
-					db.close();
 				});
 			});
 		};
-		mongo.MongoClient.connect(mongo.url, function(err, db) {
-			mongo.assert.equal(null, err);
+		mongo(function(err, db) {
 			getGroups(db, function() {
-				db.close();
 			});
 		});
 	},
@@ -166,7 +152,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					//prüft ob gruppe existiert und stellt sicher das der user ein mitglied ist
 					if(doc != null) {
 						if (doc.member.indexOf(msg.user) > -1) {
@@ -185,10 +170,8 @@ module.exports = {
 									'user' : msg.user
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateMember(db, function() {
-									db.close();
 								});
 							});
 						} else if (cursor[0] != null) {
@@ -203,10 +186,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -224,7 +205,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if (doc.mods.indexOf(msg.user) <= -1) {
@@ -243,10 +223,8 @@ module.exports = {
 									'group' : msg.name
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateMods(db, function() {
-									db.close();
 								});
 							});
 						} else if (cursor[0] != null) {
@@ -261,10 +239,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -282,7 +258,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if (doc.mods.indexOf(msg.user) > -1) {
@@ -301,10 +276,8 @@ module.exports = {
 									'group' : msg.name
 								}, socketid);
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateMods(db, function() {
-									db.close();
 								});
 							});
 						} else if (cursor[0] != null) {
@@ -319,10 +292,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -340,7 +311,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if ((doc.admin == msg.user) || (doc.mods.indexOf(msg.user) > -1)) {
@@ -368,10 +338,8 @@ module.exports = {
 									}, socketid);
 								}
 							};
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								updateMember(db, function() {
-									db.close();
 								});
 							});
 						} else if (cursor[0] != null) {
@@ -386,10 +354,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
@@ -407,7 +373,6 @@ module.exports = {
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
 				cursor.each(function(err, doc) {
-					mongo.assert.equal(err, null);
 					if(doc != null) {
 						if (doc.admin.indexOf(msg.user) > -1) {
 							var deleteGroup = function(db, callback) {
@@ -419,10 +384,8 @@ module.exports = {
 									'user' : msg.user,
 									'group' : msg.name
 								}, socketid);
-							mongo.MongoClient.connect(mongo.url, function(err, db) {
-								mongo.assert.equal(null, err);
+							mongo(function(err, db) {
 								deleteGroup(db, function() {
-									db.close();
 								});
 							});
 						} else if (cursor[0] != null) {
@@ -437,10 +400,8 @@ module.exports = {
 					}
 				});
 			};
-			mongo.MongoClient.connect(mongo.url, function(err, db) {
-				mongo.assert.equal(null, err);
+			mongo(function(err, db) {
 				findGroup(db, function() {
-					db.close();
 				});
 			});
 		} else {
