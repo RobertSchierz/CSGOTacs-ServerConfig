@@ -1,7 +1,7 @@
 module.exports = {
 	
 	reg: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
@@ -43,7 +43,7 @@ module.exports = {
 	},
 	
 	regRest: function(msg, mongo) {
-		//var server = require('../app.js');
+		//var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
@@ -78,7 +78,7 @@ module.exports = {
 	auth: function(msg, socketid, mongo) {
 		
 		//var mongo = require('../mongodb.js');
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
@@ -128,7 +128,7 @@ module.exports = {
 	
 	changeName: function(msg, socketid, mongo) {
 		
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
@@ -181,7 +181,7 @@ module.exports = {
 	
 	changePW: function(msg, socketid, mongo) {
 		
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
@@ -209,7 +209,6 @@ module.exports = {
 							};
 							mongo(function(err, db) {
 								updatePW(db, function() {
-									db.close();
 								});
 							});
 						}
@@ -223,7 +222,6 @@ module.exports = {
 			};
 			mongo(function(err, db) {
 				findUser(db, function() {
-					db.close();
 				});
 			});
 		} else {

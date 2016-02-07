@@ -1,7 +1,7 @@
 module.exports = {
 	
 	createMap: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var expire = require('./expire.js')
 		if ((msg.id != null || msg.id != undefined) && (msg.user != null && msg.user != undefined) && (msg.map != null && msg.map != undefined) && (msg.name != null && msg.name != undefined)) {
 			var createMap = function(db, callback) {
@@ -46,7 +46,7 @@ module.exports = {
 	},
 	
 	bindMap: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != null && msg.id != undefined) && (msg.group != null && msg.group != undefined)) {
 			var findMap = function(db, callback) {
@@ -94,7 +94,7 @@ module.exports = {
 	},
 	
 	changeMap: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != null && msg.id != undefined) && (msg.drag != null && msg.drag != undefined) && (msg.x != null && msg.x != undefined) && (msg.y != null && msg.y != undefined)) {
 			var findMap = function(db, callback) {
@@ -103,7 +103,16 @@ module.exports = {
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						var updateXY = function(db, callback) {
-							maps.push(doc);
+							maps.push({
+								'id' : doc.id,
+								'user' : doc.user,
+								'map' : doc.map, 
+								'name' : doc.name,
+								'group' : doc.group,
+								'drag' : msg.drag,
+								'x' : msg.x,
+								'y' : msg.y
+							});
 							db.collection('saved').updateOne(
 								doc,
 								{
@@ -118,7 +127,6 @@ module.exports = {
 						};
 						mongo(function(err, db) {
 							updateXY(db, function() {
-								db.close();
 							});
 						});
 					} else if (cursor[0] != null) {
@@ -140,7 +148,7 @@ module.exports = {
 	},
 	
 	changeMapName: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != '') && (msg.name != '')) {
 			var findMap = function(db, callback) {
@@ -189,7 +197,7 @@ module.exports = {
 	},
 	
 	deleteMap: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if (msg.id != '') {
 			var findMap = function(db, callback) {
@@ -231,7 +239,7 @@ module.exports = {
 	
 	getMaps: function(msg, socketid, mongo) {
 		var maps = [];
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var getMaps = function(db, callback) {
 			//alle vom benutzer erstellten maps auslesen und in array pushen
 			var findMaps = function(db, callback) {

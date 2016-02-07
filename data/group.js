@@ -1,7 +1,7 @@
 module.exports = {
 	
 	createGroup: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
 		console.log(msg);
@@ -50,7 +50,7 @@ module.exports = {
 	},
 	
 	authGroup: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.pw != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -108,7 +108,7 @@ module.exports = {
 	},
 	
 	getGroups: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		var expire = require('./expire.js');
 		var groups = [];
 		var getGroups = function(db, callback) {
@@ -145,7 +145,7 @@ module.exports = {
 	},
 	
 	leaveGroup: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.user != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -198,7 +198,7 @@ module.exports = {
 	},
 	
 	setGroupMod: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.user != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -251,7 +251,7 @@ module.exports = {
 	},
 	
 	unsetGroupMod: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.user != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -304,7 +304,7 @@ module.exports = {
 	},
 	
 	kickUser: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.user != '') && (msg.name != '') && (msg.kick != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -331,12 +331,12 @@ module.exports = {
 										}, function(err, results) {
 										callback();
 									});
-									server.result({
-										'status' : 'kickUserSuccess',
-										'group' : msg.name,
-										'kick' : msg.kick
-									}, socketid);
 								}
+								server.result({
+									'status' : 'kickUserSuccess',
+									'group' : msg.name,
+									'kick' : msg.kick
+								}, socketid);
 							};
 							mongo(function(err, db) {
 								updateMember(db, function() {
@@ -366,7 +366,7 @@ module.exports = {
 	},
 	
 	deleteGroup: function(msg, socketid, mongo) {
-		var server = require('../app.js');
+		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.user != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe

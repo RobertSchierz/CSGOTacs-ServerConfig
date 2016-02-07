@@ -2,7 +2,7 @@ module.exports = {
 	
 	expireMap: function(msg, mongo) {
 		//var mongo = require('../mongodb.js');
-		var send = require('../app.js');
+		var send = require('../service.js');
 		var findMap = function(db, callback) {
 			if(msg.user != undefined) {
 				var cursor = db.collection('saved').find( { "user": msg.user, 'group': null } );
@@ -39,7 +39,7 @@ module.exports = {
 	
 	expire: function(msg, mongo) {
 		//var mongo = require('../mongodb.js');
-		var send = require('../app.js');
+		var send = require('../service.js');
 		var collection = null;
 		//stellt sicher das felder nicht leer sind
 		//durchsucht die collection 'user' nach passendem benutzer/passwort
