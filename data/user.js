@@ -95,6 +95,13 @@ module.exports = {
 						} else {
 							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 							var updateUser = function(db, callback) {
+								db.collection('user').updateOne(
+									doc,
+									{
+										$set: { 'socketid' : socketid }
+									}, function(err, results) {
+									callback();
+								});
 								console.log(msg);
 								expire.expire(msg, mongo);
 								expire.expireMap(msg, mongo);
@@ -230,6 +237,33 @@ module.exports = {
 			}, socketid);
 		} 
 		
+	},
+	
+	getLive: function(msg, clients, socketid, mongo) {
+		var server = require('../service.js');
+		var liveUser = [];
+		var findUser = function(db, callback) {
+			clients.forEach(function(client) {
+				var cursor = db.collection('user').find( { 'socketid': client } );
+				cursor.each(function(err, doc) {
+					if (doc != null) {
+						console.log(doc.user);
+						liveUser.push(doc.user);
+					} else {
+						console.log(liveUser);
+						server.result({
+							'status' : 'provideLiveUser',
+							'room' : msg.room,
+							'live' : liveUser
+						}, socketid);
+					}
+				});
+			});
+		};
+		mongo(function(err, db) {
+			findUser(db, function() {
+			});
+		});
 	}
 	
 };

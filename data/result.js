@@ -11,7 +11,9 @@ module.exports = {
 			'id' : answer.id || null,
 			'name' : answer.name || null,
 			'group' : answer.group || null,
-			'groups' : answer.groups || null
+			'groups' : answer.groups || null,
+			'room' : answer.room || null,
+			'live' : answer.live || null
 		};
 		return answer;
 	}
