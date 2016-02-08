@@ -118,6 +118,10 @@ io.on('connection', function(socket){
 		user.reg(msg, socket.id, mongo);
 	});
 	
+	socket.on('deleteAccount', function(msg) {
+		user.deleteAccount(msg, socket.id, mongo);
+	});
+	
 	//empfang und ausführung einer registrierung
 	socket.on('changeName', function(msg){
 		user.changeName(msg, socket.id, mongo);
@@ -211,18 +215,14 @@ io.on('connection', function(socket){
 		var room = msg.group + '_' + msg.map;
 		socket.join(room);
 		socket.emit('status', {'status': 'provideRoomName', 'room' : room});
-		console.log(msg.group + '_' + msg.map);
-		console.log(Object.keys(socket.adapter.rooms[msg.group + '_' + msg.map]))
 	});
 	
 	socket.on('leaveGroupLive', function(msg) {
 		socket.leave(msg.room);
-		console.log(Object.keys(io.sockets.adapter.rooms[msg.group + '_' + msg.map]))
 	});
 	
 	socket.on('broadcastGroupLive', function(msg) {
 		socket.broadcast.to(msg.room).emit('live', msg);
-		console.log(msg);
 	});
 	
 	socket.on('getLiveUser', function(msg) {

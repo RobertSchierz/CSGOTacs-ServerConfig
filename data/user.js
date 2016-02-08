@@ -133,6 +133,59 @@ module.exports = {
 		
 	},
 	
+	deleteAccount: function(msg, socketid, mongo) {
+		var server = require('../service.js');
+		var group = require('./group.js');
+		//stellt sicher das felder nicht leer sind
+		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+			//durchsucht die collection 'groups' nach der entsprechenden gruppe
+			var findUser = function(db, callback) {
+				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursorMap = db.collection('saved').find( { "user": msg.user } );
+				var cursorGroup = db.collection('groups').find( { 'member': msg.user } );
+				cursor.each(function(err, doc) {
+					if(doc != null) {
+						var deleteUser = function(db, callback) {
+							db.collection('user').deleteOne(doc);
+						};
+						server.result({
+							'status' : 'deleteAccountSuccess'
+						}, socketid);
+						mongo(function(err, db) {
+							deleteUser(db, function() {
+							});
+						});
+					} else {
+						callback();
+					}
+				});
+				cursorMap.each(function(err, docMap) {
+					var deleteMaps = function(db, callback) {
+						db.collection('saved').deleteOne(docMap);
+					};
+					mongo(function(err, db) {
+						deleteMaps(db, function() {
+						});
+					});
+				});
+				cursorGroup.each(function(err, docGroup) {
+					if(docGroup != null) {
+						console.log(docGroup);
+						group.leaveGroup({'name': docGroup.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
+					}
+				});
+			};
+			mongo(function(err, db) {
+				findUser(db, function() {
+				});
+			});
+		} else {
+			server.result({
+				'status' : 'deleteAccountFailed'
+			}, socketid);
+		} 
+	},
+	
 	changeName: function(msg, socketid, mongo) {
 		
 		var server = require('../service.js');
