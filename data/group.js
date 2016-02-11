@@ -51,6 +51,7 @@ module.exports = {
 	
 	authGroup: function(msg, socketid, mongo) {
 		var server = require('../service.js');
+		var group = require('./group.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.name != '') && (msg.pw != '')) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
@@ -74,12 +75,15 @@ module.exports = {
 										}, function(err, results) {
 										callback();
 									});
+									group.getGroups({'user': msg.user, 'authGroup': true}, socketid, mongo);
+									/*
 									server.result({
 										'status' : 'authGroupSuccess',
 										'member' : doc.member,
 										'admin' : doc.admin,
 										'mods' : doc.mods
 									}, socketid)
+									*/
 								};
 								mongo(function(err, db) {
 									updateMember(db, function() {
@@ -127,8 +131,14 @@ module.exports = {
 						expire.expire(doc.name, mongo);
 					} else {
 						if(msg.deleteAccount == undefined) {
+							var status;
+							if(msg.authGroup == undefined) {
+								status = 'provideGroups';
+							} else {
+								status = 'authGroupSuccess';
+							}
 							server.result({
-								'status' : 'provideGroups',
+								'status' : status,
 								'groups' : groups
 							}, socketid);
 						} else {

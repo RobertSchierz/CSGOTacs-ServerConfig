@@ -102,7 +102,6 @@ module.exports = {
 									}, function(err, results) {
 									callback();
 								});
-								console.log(msg);
 								expire.expire(msg, mongo);
 								expire.expireMap(msg, mongo);
 								//authentifizierung erfolgreich
@@ -170,7 +169,6 @@ module.exports = {
 				});
 				cursorGroup.each(function(err, docGroup) {
 					if(docGroup != null) {
-						console.log(docGroup);
 						group.leaveGroup({'name': docGroup.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
 					}
 				});
@@ -293,30 +291,69 @@ module.exports = {
 	},
 	
 	getLive: function(msg, clients, socketid, mongo) {
+		
 		var server = require('../service.js');
-		var liveUser = [];
 		var findUser = function(db, callback) {
-			clients.forEach(function(client) {
-				var cursor = db.collection('user').find( { 'socketid': client } );
-				cursor.each(function(err, doc) {
-					if (doc != null) {
-						console.log(doc.user);
-						liveUser.push(doc.user);
-					} else {
-						console.log(liveUser);
-						server.result({
-							'status' : 'provideLiveUser',
-							'room' : msg.room,
-							'live' : liveUser
-						}, socketid);
-					}
+			var liveUser = [];
+			var counter = clients.length;
+			var result = 
+			setTimeout(function() {
+				clients.forEach(function(client) {
+					var cursor = db.collection('user').find( { 'socketid': client } );
+					cursor.each(function(err, doc) {
+						if(doc != null) {
+							liveUser.push(doc.user);
+							if(counter == 0) {
+								server.result({
+									'status' : 'connectedClients',
+									'room' : msg.room,
+									'live' : liveUser
+								}, socketid);
+							}
+						} else {
+							counter--;
+							if(counter == 0) {
+								server.result({
+									'status' : 'connectedClients',
+									'room' : msg.room,
+									'live' : liveUser
+								}, socketid);
+							}
+						}
+					});
 				});
-			});
+			}, 100);
 		};
 		mongo(function(err, db) {
 			findUser(db, function() {
 			});
 		});
+		
+	},
+	
+	storeSocketID: function(msg, socketid, mongo) {
+		//stellt sicher das felder nicht leer sind
+		if ((msg.user != null && msg.user != undefined) && (socketid != null && socketid != undefined)) {
+			//durchsucht die collection 'user' nach passerverem benutzer/passwort
+			var findUser = function(db, callback) {
+				var cursor = db.collection('user').find( { "user": msg.user } );
+				cursor.each(function(err, doc) {
+					db.collection('user').updateOne(
+						doc,
+						{
+							$set: { 'socketid' : socketid }
+						},
+						function(err, results) {
+						callback();
+					});
+				});
+			};
+			mongo(function(err, db) {
+				findUser(db, function() {
+				});
+			});
+		} else {
+		} 
 	}
 	
 };

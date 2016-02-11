@@ -69,7 +69,6 @@ app.get('/stats', function(req, res){
 
 app.post('/status', function(request, response){
 	//if (authDevelop(basicAuth(request))){
-		console.log(request.body.status);
 		if (request.body.status == 'reg') {
 			var data = {
 				'user' : request.body.user,
@@ -83,7 +82,13 @@ app.post('/status', function(request, response){
 module.exports = {
 	result: function(status, socketid) {
 		var result = require('./data/result.js');
-		io.sockets.connected[socketid].emit('status', result.setStatus(status));
+		var getResult = result.setStatus(status);
+		if(status.room != null) {
+			io.sockets.connected[socketid].nsp.to(status.room).emit('status', getResult);
+		} else {
+			io.sockets.connected[socketid].emit('status', getResult);
+		}
+		
 	},
 	
 	setExpire: function(date) {
@@ -158,7 +163,6 @@ io.on('connection', function(socket){
 	
 	//stellt client die vom entsprechenden benutzer gespeicherten taktiken zur verfügung
 	socket.on('getMaps', function(msg){
-		console.log(msg);
 		map.getMaps(msg, socket.id, mongo);
 	});
 	
@@ -204,6 +208,9 @@ io.on('connection', function(socket){
 	
 	socket.on('appTest', function(){
 		socket.join('appTest');
+		var clients = Object.keys(io.sockets.adapter.rooms['appTest']);
+		user.getLive({'room': 'appTest'}, clients, socket.id, mongo);
+		//socket.broadcast.to('appTest').emit();
 	});
 	
 	socket.on('json', function(msg){
@@ -211,24 +218,26 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('joinGroupLive', function(msg) {
-		var result = require('./data/result.js');
+		user.storeSocketID({'user':msg.user}, socket.id, mongo);
 		var room = msg.group + '_' + msg.map;
 		socket.join(room);
 		socket.emit('status', {'status': 'provideRoomName', 'room' : room});
+		var clients = Object.keys(io.sockets.adapter.rooms[room]);
+		user.getLive({'room': room}, clients, socket.id, mongo);
 	});
 	
 	socket.on('leaveGroupLive', function(msg) {
 		socket.leave(msg.room);
+		if(io.sockets.adapter.rooms[msg.room] != undefined) {
+			var clients = Object.keys(io.sockets.adapter.rooms[msg.room]);
+			user.getLive({'room': msg.room}, clients, socket.id, mongo);
+		}
 	});
 	
 	socket.on('broadcastGroupLive', function(msg) {
 		socket.broadcast.to(msg.room).emit('live', msg);
 	});
 	
-	socket.on('getLiveUser', function(msg) {
-		var clients = Object.keys(io.sockets.adapter.rooms[msg.room]);
-		user.getLive(msg, clients, socket.id, mongo);
-	});
 	/*
 	socket.on('getStats', function() {
 		console.log('test');
