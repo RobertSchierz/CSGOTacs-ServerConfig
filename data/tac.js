@@ -1,12 +1,12 @@
 module.exports = {
 	
-	createMap: function(msg, socketid, mongo) {
+	createTac: function(msg, socketid, mongo) {
 		var server = require('../service.js');
 		var expire = require('./expire.js')
 		if ((msg.id != null || msg.id != undefined) && (msg.user != null && msg.user != undefined) && (msg.map != null && msg.map != undefined) && (msg.name != null && msg.name != undefined)) {
-			var createMap = function(db, callback) {
-				var maps = [];
-				var newMap = {
+			var createTac = function(db, callback) {
+				var tacs = [];
+				var newTac = {
 					'id' : msg.id,
 					'user' : msg.user,
 					'map' : msg.map,
@@ -16,44 +16,44 @@ module.exports = {
 					'x' : msg.x || [],
 					'y' : msg.y || []
 				};
-				maps.push(newMap);
-				db.collection('saved').insertOne(newMap,
+				tacs.push(newTac);
+				db.collection('saved').insertOne(newTac,
 				function(err, result) {
 					callback(result);
 				});
 				
 				if(msg.group == undefined) {
-					expire.expireMap(msg, mongo);
+					expire.expireTac(msg, mongo);
 				} else {
-					expire.expireMap(msg.group, mongo);
+					expire.expireTac(msg.group, mongo);
 				}
 				
 				server.result({
-					'status' : 'createMapSuccess',
-					'maps' : maps
+					'status' : 'createTacSuccess',
+					'tacs' : tacs
 				}, socketid);
 				
 			};
 			mongo(function(err, db) {
-				createMap(db, function() {
+				createTac(db, function() {
 				});
 			});
 		} else {
 			server.result({
-				'status' : 'createMapFailed'
+				'status' : 'createTacFailed'
 			}, socketid);
 		}
 	},
 	
-	bindMap: function(msg, socketid, mongo) {
+	bindTac: function(msg, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != null && msg.id != undefined) && (msg.group != null && msg.group != undefined)) {
-			var findMap = function(db, callback) {
+			var findTac = function(db, callback) {
 				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						var bindMap = function(db, callback) {
+						var bindTac = function(db, callback) {
 							db.collection('saved').updateOne(
 								doc,
 								{
@@ -62,48 +62,46 @@ module.exports = {
 								callback();
 							});
 							server.result({
-								'status' : 'bindMapSuccess',
+								'status' : 'bindTacSuccess',
 								'id' : msg.id,
 								'group' : msg.group
 							}, socketid);
 						};
 						mongo(function(err, db) {
-							bindMap(db, function() {
+							bindTac(db, function() {
 							});
 						});
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'bindMapFailed'
+							'status' : 'bindTacFailed'
 							
 						}, socketid);
-						console.log('fehler 1. else');
 						callback();
 					}
 				});
 			};
 			mongo(function(err, db) {
-				findMap(db, function() {
+				findTac(db, function() {
 				});
 			});
 		} else {
 			server.result({
-				'status' : 'bindMapFailed'
+				'status' : 'bindTacFailed'
 			}, socketid);
-			console.log('fehler 2. else');
 		} 
 	},
 	
-	changeMap: function(msg, socketid, mongo) {
+	changeTac: function(msg, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != null && msg.id != undefined) && (msg.drag != null && msg.drag != undefined) && (msg.x != null && msg.x != undefined) && (msg.y != null && msg.y != undefined)) {
-			var findMap = function(db, callback) {
-				var maps = [];
+			var findTac = function(db, callback) {
+				var tacs = [];
 				var cursor = db.collection('saved').find( { "id": msg.id } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						var updateXY = function(db, callback) {
-							maps.push({
+							tacs.push({
 								'id' : doc.id,
 								'user' : doc.user,
 								'map' : doc.map, 
@@ -121,8 +119,8 @@ module.exports = {
 								callback();
 							});
 							server.result({
-								'status' : 'changeMapSuccess',
-								'maps' : maps
+								'status' : 'changeTacSuccess',
+								'tacs' : tacs
 							}, socketid);
 						};
 						mongo(function(err, db) {
@@ -131,27 +129,27 @@ module.exports = {
 						});
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'changeMapFailed'
+							'status' : 'changeTacFailed'
 						}, socketid);
 					}
 				});
 			};
 			mongo(function(err, db) {
-				findMap(db, function() {
+				findTac(db, function() {
 				});
 			});
 		} else {
 			server.result({
-				'status' : 'changeMapFailed'
+				'status' : 'changeTacFailed'
 			}, socketid);
 		} 
 	},
 	
-	changeMapName: function(msg, socketid, mongo) {
+	changeTacName: function(msg, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if ((msg.id != '') && (msg.name != '')) {
-			var findMap = function(db, callback) {
+			var findTac = function(db, callback) {
 				var name;
 				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
@@ -166,7 +164,7 @@ module.exports = {
 								callback();
 							});
 							server.result({
-								'status' : 'changeMapNameSuccess',
+								'status' : 'changeTacNameSuccess',
 								'id' : msg.id,
 								'name' : name
 							}, socketid);
@@ -177,7 +175,7 @@ module.exports = {
 						});
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'changeMapNameFailed',
+							'status' : 'changeTacNameFailed',
 							'id' : msg.id,
 							'name' : name
 						}, socketid);
@@ -186,40 +184,40 @@ module.exports = {
 				});
 			};
 			mongo(function(err, db) {
-				findMap(db, function() {
+				findTac(db, function() {
 				});
 			});
 		} else {
 			server.result({
-				'status' : 'changeMapNameFailed'
+				'status' : 'changeTacNameFailed'
 			}, socketid);
 		}
 	},
 	
-	deleteMap: function(msg, socketid, mongo) {
+	deleteTac: function(msg, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
 		if (msg.id != '') {
-			var findMap = function(db, callback) {
+			var findTac = function(db, callback) {
 				var cursor = db.collection('saved').find( { 'id': parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						var deleteMap = function(db, callback) {
+						var deleteTac = function(db, callback) {
 							db.collection('saved').deleteOne(
 								doc
 							);
 							server.result({
-								'status' : 'deleteMapSuccess',
+								'status' : 'deleteTacSuccess',
 								'id' : msg.id
 							}, socketid);
 						};
 						mongo(function(err, db) {
-							deleteMap(db, function() {
+							deleteTac(db, function() {
 							});
 						});
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'deleteMapFailed',
+							'status' : 'deleteTacFailed',
 							'id' : msg.id
 						}, socketid);
 						callback();
@@ -227,22 +225,22 @@ module.exports = {
 				});
 			};
 			mongo(function(err, db) {
-				findMap(db, function() {
+				findTac(db, function() {
 				});
 			});
 		} else {
 			server.result({
-				'status' : 'deleteMapFailed'
+				'status' : 'deleteTacFailed'
 			}, socketid);
 		} 
 	},
 	
-	getMaps: function(msg, socketid, mongo) {
-		var maps = [];
+	getTacs: function(msg, socketid, mongo) {
+		var tacs = [];
 		var server = require('../service.js');
-		var getMaps = function(db, callback) {
+		var getTacs = function(db, callback) {
 			//alle vom benutzer erstellten maps auslesen und in array pushen
-			var findMaps = function(db, callback) {
+			var findTacs = function(db, callback) {
 				var cursor;
 				if (msg.user != undefined) {
 					cursor = db.collection('saved').find( { "user": msg.user } );
@@ -251,7 +249,7 @@ module.exports = {
 				}
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						maps.push({
+						tacs.push({
 							'id' : doc.id,
 							'map' : doc.map,
 							'name' : doc.name,
@@ -263,20 +261,20 @@ module.exports = {
 					} else {
 						//übergibt dem client das maps array
 						server.result({
-							'status' : 'provideMaps',
-							'maps' : maps
+							'status' : 'provideTacs',
+							'tacs' : tacs
 						}, socketid);
 						callback();
 					}
 				});
 			};
 			mongo(function(err, db) {
-				findMaps(db, function() {
+				findTacs(db, function() {
 				});
 			});
 		};
 		mongo(function(err, db) {
-			getMaps(db, function() {
+			getTacs(db, function() {
 			});
 		});
 	}

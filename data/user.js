@@ -103,7 +103,7 @@ module.exports = {
 									callback();
 								});
 								expire.expire(msg, mongo);
-								expire.expireMap(msg, mongo);
+								expire.expireTac(msg, mongo);
 								//authentifizierung erfolgreich
 								server.result ({
 									'status' : 'authSuccess',
@@ -140,7 +140,7 @@ module.exports = {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": msg.user } );
-				var cursorMap = db.collection('saved').find( { "user": msg.user } );
+				var cursorTac = db.collection('saved').find( { "user": msg.user } );
 				var cursorGroup = db.collection('groups').find( { 'member': msg.user } );
 				cursor.each(function(err, doc) {
 					if(doc != null) {
@@ -158,12 +158,12 @@ module.exports = {
 						callback();
 					}
 				});
-				cursorMap.each(function(err, docMap) {
-					var deleteMaps = function(db, callback) {
-						db.collection('saved').deleteOne(docMap);
+				cursorTac.each(function(err, docTac) {
+					var deleteTacs = function(db, callback) {
+						db.collection('saved').deleteOne(docTac);
 					};
 					mongo(function(err, db) {
-						deleteMaps(db, function() {
+						deleteTacs(db, function() {
 						});
 					});
 				});

@@ -127,7 +127,7 @@ module.exports = {
 							'admin' : doc.admin,
 							'mods' : doc.mods
 						});
-						expire.expireMap(doc.name, mongo);
+						expire.expireTac(doc.name, mongo);
 						expire.expire(doc.name, mongo);
 					} else {
 						if(msg.deleteAccount == undefined) {
@@ -392,7 +392,7 @@ module.exports = {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": msg.name } );
-				var cursorMaps = db.collection('saved').find( { 'group': msg.name} );
+				var cursorTacs = db.collection('saved').find( { 'group': msg.name} );
 				cursor.each(function(err, doc) {
 					if(doc != null) {
 						if (doc.admin.indexOf(msg.user) > -1) {
@@ -421,12 +421,12 @@ module.exports = {
 						callback();
 					}
 				});
-				cursorMaps.each(function(err, docMap) {
-					var deleteMaps = function(db, callback) {
-						db.collection('saved').deleteOne(docMap);
+				cursorTacs.each(function(err, docTac) {
+					var deleteTacs = function(db, callback) {
+						db.collection('saved').deleteOne(docTac);
 					};
 					mongo(function(err, db) {
-						deleteMaps(db, function() {
+						deleteTacs(db, function() {
 						});
 					});
 				});

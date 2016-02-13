@@ -3,70 +3,20 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var user = require('./data/user.js');
-var map = require('./data/map.js');
+var tac = require('./data/tac.js');
 var group = require('./data/group.js');
 var result = require('./data/result.js');
 var mongo = require('./mongodb.js');
 var stats = require('./data/stats.js');
 
-/*
-require('socketio-auth')(io, {
-  authenticate: function (socket, data, callback) {
-    //get credentials sent by the client
-    var username = data.username;
-    var password = data.password;
-
-    db.findUser('User', {username:username}, function(err, user) {
-
-      //inform the callback of auth success/failure
-      if (err || !user) return callback(new Error("User not found"));
-      return callback(null, user.password == password);
-    }
-  }
-});
-*/
 var basicAuth = require('basic-auth');
 
-var authDevelop = function(data){
-    if (!data || data.name != 'developer' || user.data != '123') {
-        return false
-    }else{
-        return true
-    }
-};
+//stellt statusseite zur verfügung
+app.get('/', function(req, res){
+	res.sendFile('status.html', {root: __dirname});
+});
 
 /*
-//ENTWICKLUNG: löscht beim serverstart alle gespeicherten karten
-var removeAll = function(db, callback) {
-	db.collection('saved').deleteMany( {}, function(err, results) {
-		callback();
-	});
-	db.collection('groups').deleteMany( {}, function(err, results) {
-		callback();
-	});
-	db.collection('user').deleteMany( {}, function(err, results) {
-		callback();
-	});
-};
-
-//ENTWICKLUNG: führt removeAll aus
-MongoClient.connect(url, function(err, db) {
-	assert.equal(null, err);
-	removeAll(db, function() {
-		db.close();
-	});
-});
-*/
-
-//ENTWICKLUNG: stellt index.html für testseite zur verfügung
-app.get('/', function(req, res){
-	res.sendFile('index.html', {root: __dirname});
-});
-
-app.get('/stats', function(req, res){
-	res.sendFile('stats.html', {root: __dirname});
-});
-
 app.post('/status', function(request, response){
 	//if (authDevelop(basicAuth(request))){
 		if (request.body.status == 'reg') {
@@ -78,8 +28,12 @@ app.post('/status', function(request, response){
 		}
 	//}
 });
+*/
 
+//externe funktionen
 module.exports = {
+	
+	//stellt die ergebnisse der datenbankanfragen zu einem 'status' json zusammen und schickt diese an den client
 	result: function(status, socketid) {
 		var result = require('./data/result.js');
 		var getResult = result.setStatus(status);
@@ -88,128 +42,155 @@ module.exports = {
 		} else {
 			io.sockets.connected[socketid].emit('status', getResult);
 		}
-		
 	},
 	
+	//erzeugt das ablaufdatum eines dokuments
 	setExpire: function(date) {
 		var DAYS = 90;
 		var expireDate = new Date(date.setDate(date.getDate() + DAYS));
 		return expireDate;
-	}/*,
+	}
 	
-	sendStats: function(msg, socketid) {
-		io.sockets.connected[socketid].emit('provideStats', msg);
-	}*/
 };
 
 //client verbindet sich
 io.on('connection', function(socket){
 	
-	//client trennt verbindung
+	//client trennt verbindung (oder wird durch timeout getrennt)
 	socket.on('disconnect', function(){
 	});
-	/*
-	//empfang und ausführung einer registrierung
-	socket.on('reg', function(msg){
-		user.reg(msg, socket.id, mongo);
-	});
-	*/
+	
 	//verarbeitung eines logins
 	socket.on('auth', function(msg) {
-		user.auth(msg, socket.id, mongo);
+		user.auth(JSON.parse(msg), socket.id, mongo);
 	});
 	
+	//verarbeitung einer registrierung
 	socket.on('reg', function(msg) {
-		user.reg(msg, socket.id, mongo);
+		var data
+		user.reg(JSON.parse(msg), socket.id, mongo);
 	});
 	
+	//ein benutzer löscht seinen account
 	socket.on('deleteAccount', function(msg) {
-		user.deleteAccount(msg, socket.id, mongo);
+		user.deleteAccount(JSON.parse(msg), socket.id, mongo);
 	});
 	
-	//empfang und ausführung einer registrierung
+	//ein benutzer ändert seinen namen
 	socket.on('changeName', function(msg){
-		user.changeName(msg, socket.id, mongo);
+		user.changeName(JSON.parse(msg), socket.id, mongo);
 	});
 	
-	//verarbeitung eines logins
+	//ein benutzer ändert sein passwort
 	socket.on('changePW', function(msg) {
-		user.changePW(msg, socket.id, mongo);
+		user.changePW(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//speichern einer taktik
-	socket.on('createMap', function(msg){
-		map.createMap(msg, socket.id, mongo);
+	socket.on('createTac', function(msg){
+		tac.createTac(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//taktik einer gruppe zuordnen
-	socket.on('bindMap', function(msg) {
-		map.bindMap(msg, socket.id, mongo);
+	socket.on('bindTac', function(msg) {
+		tac.bindTac(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//ändern einer taktik
-	socket.on('changeMap', function(msg) {
-		map.changeMap(msg, socket.id, mongo);
+	socket.on('changeTac', function(msg) {
+		tac.changeTac(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//namen einer taktik ändern
-	socket.on('changeMapName', function(msg) {
-		map.changeMapName(msg, socket.id, mongo);
+	socket.on('changeTacName', function(msg) {
+		tac.changeTacName(JSON.parse(msg), socket.id, mongo);
 	});
 	
-	socket.on('deleteMap', function(msg) {
-		map.deleteMap(msg, socket.id, mongo);
+	//löschen einer taktik
+	socket.on('deleteTac', function(msg) {
+		tac.deleteTac(JSON.parse(msg), socket.id, mongo);
 	});
 	
-	//stellt client die vom entsprechenden benutzer gespeicherten taktiken zur verfügung
-	socket.on('getMaps', function(msg){
-		map.getMaps(msg, socket.id, mongo);
+	//stellt dem client die vom entsprechenden benutzer gespeicherten taktiken zur verfügung
+	socket.on('getTacs', function(msg){
+		tac.getTacs(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//registrieren einer gruppe
 	socket.on('createGroup', function(msg){
-		group.createGroup(msg, socket.id, mongo);
+		group.createGroup(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//einer gruppe beitreten
 	socket.on('authGroup', function(msg) {
-		group.authGroup(msg, socket.id, mongo);
+		group.authGroup(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//gibt dem client alle gruppen des benutzers zurück
 	socket.on('getGroups', function(msg){
-		group.getGroups(msg, socket.id, mongo);
+		group.getGroups(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//eine gruppe verlassen
 	socket.on('leaveGroup', function(msg) {
-		group.leaveGroup(msg, socket.id, mongo);
+		group.leaveGroup(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//einen user zum moderator machen
 	socket.on('setGroupMod', function(msg) {
-		group.setGroupMod(msg, socket.id, mongo);
+		group.setGroupMod(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//einen moderator zum user machen
 	socket.on('unsetGroupMod', function(msg) {
-		group.unsetGroupMod(msg, socket.id, mongo);
+		group.unsetGroupMod(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//einen user aus der gruppe entfernen
 	socket.on('kickUser', function(msg) {
-		group.kickUser(msg, socket.id, mongo);
+		group.kickUser(JSON.parse(msg), socket.id, mongo);
 	});
 	
 	//eine gruppe löschen
 	socket.on('deleteGroup', function(msg) {
-		group.deleteGroup(msg, socket.id, mongo);
+		group.deleteGroup(JSON.parse(msg), socket.id, mongo);
 	});
 	
+	//den live-modus einer gruppe betreten
+	socket.on('joinGroupLive', function(msg) {
+		var data = JSON.parse(msg);
+		user.storeSocketID({'user':data.user}, socket.id, mongo);
+		var room = data.group + '_' + data.map;
+		socket.join(room);
+		socket.emit('status', {"status": "provideRoomName", "room" : room});
+		var clients = Object.keys(io.sockets.adapter.rooms[room]);
+		user.getLive({'room': room}, clients, socket.id, mongo);
+	});
+	
+	//den live-modus einer gruppe verlassen
+	socket.on('leaveGroupLive', function(msg) {
+		var data = JSON.parse(msg);
+		socket.leave(data.room);
+		if(io.sockets.adapter.rooms[data.room] != undefined) {
+			var clients = Object.keys(io.sockets.adapter.rooms[data.room]);
+			user.getLive({'room': data.room}, clients, socket.id, mongo);
+		}
+	});
+	
+	//übertragung der daten innerhalb des live-modus
+	socket.on('broadcastGroupLive', function(msg) {
+		var data = JSON.parse(msg);
+		socket.broadcast.to(data.room).emit('status', data);
+	});
+	
+	
+	
+	
+	//ENTWICKLUNG: TEST DER LIVE-VERBINDUNG ZWISCHEN DEN APPS
 	socket.on('appTest', function(){
 		socket.join('appTest');
 		var clients = Object.keys(io.sockets.adapter.rooms['appTest']);
-		user.getLive({'room': 'appTest'}, clients, socket.id, mongo);
+		user.getLive({"room": "appTest"}, clients, socket.id, mongo);
 		//socket.broadcast.to('appTest').emit();
 	});
 	
@@ -217,35 +198,12 @@ io.on('connection', function(socket){
 		socket.broadcast.to('appTest').emit('json', msg);
 	});
 	
-	socket.on('joinGroupLive', function(msg) {
-		user.storeSocketID({'user':msg.user}, socket.id, mongo);
-		var room = msg.group + '_' + msg.map;
-		socket.join(room);
-		socket.emit('status', {'status': 'provideRoomName', 'room' : room});
-		var clients = Object.keys(io.sockets.adapter.rooms[room]);
-		user.getLive({'room': room}, clients, socket.id, mongo);
-	});
 	
-	socket.on('leaveGroupLive', function(msg) {
-		socket.leave(msg.room);
-		if(io.sockets.adapter.rooms[msg.room] != undefined) {
-			var clients = Object.keys(io.sockets.adapter.rooms[msg.room]);
-			user.getLive({'room': msg.room}, clients, socket.id, mongo);
-		}
-	});
 	
-	socket.on('broadcastGroupLive', function(msg) {
-		socket.broadcast.to(msg.room).emit('live', msg);
-	});
 	
-	/*
-	socket.on('getStats', function() {
-		console.log('test');
-		stats.provide(socket.id, mongo);
-	});
-	*/
+	
 });
 
+//port für die socket-verbindung
 http.listen(63379, function(){
-	//console.log('listening on *:63379');
 });
