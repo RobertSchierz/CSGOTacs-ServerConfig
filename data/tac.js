@@ -53,24 +53,18 @@ module.exports = {
 				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						var bindTac = function(db, callback) {
-							db.collection('saved').updateOne(
-								doc,
-								{
-									$set: { 'group' : msg.group }
-								}, function(err, results) {
-								callback();
-							});
-							server.result({
-								'status' : 'bindTacSuccess',
-								'id' : msg.id,
-								'group' : msg.group
-							}, socketid);
-						};
-						mongo(function(err, db) {
-							bindTac(db, function() {
-							});
+						db.collection('saved').updateOne(
+							doc,
+							{
+								$set: { 'group' : msg.group }
+							}, function(err, results) {
+							callback();
 						});
+						server.result({
+							'status' : 'bindTacSuccess',
+							'id' : msg.id,
+							'group' : msg.group
+						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'bindTacFailed'
@@ -100,33 +94,27 @@ module.exports = {
 				var cursor = db.collection('saved').find( { "id": msg.id } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						var updateXY = function(db, callback) {
-							tacs.push({
-								'id' : doc.id,
-								'user' : doc.user,
-								'map' : doc.map, 
-								'name' : doc.name,
-								'group' : doc.group,
-								'drag' : msg.drag,
-								'x' : msg.x,
-								'y' : msg.y
-							});
-							db.collection('saved').updateOne(
-								doc,
-								{
-									$set: { 'drag' : msg.drag, 'x' : msg.x, 'y' : msg.y }
-								}, function(err, results) {
-								callback();
-							});
-							server.result({
-								'status' : 'changeTacSuccess',
-								'tacs' : tacs
-							}, socketid);
-						};
-						mongo(function(err, db) {
-							updateXY(db, function() {
-							});
+						tacs.push({
+							'id' : doc.id,
+							'user' : doc.user,
+							'map' : doc.map, 
+							'name' : doc.name,
+							'group' : doc.group,
+							'drag' : msg.drag,
+							'x' : msg.x,
+							'y' : msg.y
 						});
+						db.collection('saved').updateOne(
+							doc,
+							{
+								$set: { 'drag' : msg.drag, 'x' : msg.x, 'y' : msg.y }
+							}, function(err, results) {
+							callback();
+						});
+						server.result({
+							'status' : 'changeTacSuccess',
+							'tacs' : tacs
+						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'changeTacFailed'
@@ -155,24 +143,18 @@ module.exports = {
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						name = doc.name;
-						var updateName = function(db, callback) {
-							db.collection('saved').updateOne(
-								doc,
-								{
-									$set: { 'name' : msg.name }
-								}, function(err, results) {
-								callback();
-							});
-							server.result({
-								'status' : 'changeTacNameSuccess',
-								'id' : msg.id,
-								'name' : name
-							}, socketid);
-						};
-						mongo(function(err, db) {
-							updateName(db, function() {
-							});
+						db.collection('saved').updateOne(
+							doc,
+							{
+								$set: { 'name' : msg.name }
+							}, function(err, results) {
+							callback();
 						});
+						server.result({
+							'status' : 'changeTacNameSuccess',
+							'id' : msg.id,
+							'name' : name
+						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'changeTacNameFailed',
@@ -202,19 +184,13 @@ module.exports = {
 				var cursor = db.collection('saved').find( { 'id': parseInt(msg.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						var deleteTac = function(db, callback) {
-							db.collection('saved').deleteOne(
-								doc
-							);
-							server.result({
-								'status' : 'deleteTacSuccess',
-								'id' : msg.id
-							}, socketid);
-						};
-						mongo(function(err, db) {
-							deleteTac(db, function() {
-							});
-						});
+						db.collection('saved').deleteOne(
+							doc
+						);
+						server.result({
+							'status' : 'deleteTacSuccess',
+							'id' : msg.id
+						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'deleteTacFailed',
@@ -240,37 +216,31 @@ module.exports = {
 		var server = require('../service.js');
 		var getTacs = function(db, callback) {
 			//alle vom benutzer erstellten maps auslesen und in array pushen
-			var findTacs = function(db, callback) {
-				var cursor;
-				if (msg.user != undefined) {
-					cursor = db.collection('saved').find( { "user": msg.user } );
-				} else if (msg.group != undefined) {
-					cursor = db.collection('saved').find( { "group": msg.group } );
+			var cursor;
+			if (msg.user != undefined) {
+				cursor = db.collection('saved').find( { "user": msg.user } );
+			} else if (msg.group != undefined) {
+				cursor = db.collection('saved').find( { "group": msg.group } );
+			}
+			cursor.each(function(err, doc) {
+				if (doc != null) {
+					tacs.push({
+						'id' : doc.id,
+						'map' : doc.map,
+						'name' : doc.name,
+						'group' : doc.group,
+						'drag' : doc.drag,
+						'x' : doc.x,
+						'y' : doc.y
+					});
+				} else {
+					//übergibt dem client das maps array
+					server.result({
+						'status' : 'provideTacs',
+						'tacs' : tacs
+					}, socketid);
+					callback();
 				}
-				cursor.each(function(err, doc) {
-					if (doc != null) {
-						tacs.push({
-							'id' : doc.id,
-							'map' : doc.map,
-							'name' : doc.name,
-							'group' : doc.group,
-							'drag' : doc.drag,
-							'x' : doc.x,
-							'y' : doc.y
-						});
-					} else {
-						//übergibt dem client das maps array
-						server.result({
-							'status' : 'provideTacs',
-							'tacs' : tacs
-						}, socketid);
-						callback();
-					}
-				});
-			};
-			mongo(function(err, db) {
-				findTacs(db, function() {
-				});
 			});
 		};
 		mongo(function(err, db) {

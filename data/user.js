@@ -94,26 +94,20 @@ module.exports = {
 							}, socketid);
 						} else {
 							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
-							var updateUser = function(db, callback) {
-								db.collection('user').updateOne(
-									doc,
-									{
-										$set: { 'socketid' : socketid }
-									}, function(err, results) {
-									callback();
-								});
-								expire.expire(msg, mongo);
-								expire.expireTac(msg, mongo);
-								//authentifizierung erfolgreich
-								server.result ({
-									'status' : 'authSuccess',
-									'user' : msg.user
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updateUser(db, function() {
-								});
+							db.collection('user').updateOne(
+								doc,
+								{
+									$set: { 'socketid' : socketid }
+								}, function(err, results) {
+								callback();
 							});
+							expire.expire(msg, mongo);
+							expire.expireTac(msg, mongo);
+							//authentifizierung erfolgreich
+							server.result ({
+								'status' : 'authSuccess',
+								'user' : msg.user
+							}, socketid);
 						}
 					} else {
 						callback();
@@ -144,28 +138,16 @@ module.exports = {
 				var cursorGroup = db.collection('groups').find( { 'member': msg.user } );
 				cursor.each(function(err, doc) {
 					if(doc != null) {
-						var deleteUser = function(db, callback) {
-							db.collection('user').deleteOne(doc);
-						};
+						db.collection('user').deleteOne(doc);
 						server.result({
 							'status' : 'deleteAccountSuccess'
 						}, socketid);
-						mongo(function(err, db) {
-							deleteUser(db, function() {
-							});
-						});
 					} else {
 						callback();
 					}
 				});
 				cursorTac.each(function(err, docTac) {
-					var deleteTacs = function(db, callback) {
-						db.collection('saved').deleteOne(docTac);
-					};
-					mongo(function(err, db) {
-						deleteTacs(db, function() {
-						});
-					});
+					db.collection('saved').deleteOne(docTac);
 				});
 				cursorGroup.each(function(err, docGroup) {
 					if(docGroup != null) {
@@ -200,22 +182,16 @@ module.exports = {
 								'status' : 'changeNameFailed'
 							}, socketid);
 						} else {
-							var updateUser = function(db, callback) {
-								db.collection('user').updateOne(
-									doc,
-									{
-										$set: { 'user' : msg.user }
-									}, function(err, results) {
-									callback();
-								});
-								server.result({
-									'status' : 'changeNameSuccess'
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updateUser(db, function() {
-								});
+							db.collection('user').updateOne(
+								doc,
+								{
+									$set: { 'user' : msg.user }
+								}, function(err, results) {
+								callback();
 							});
+							server.result({
+								'status' : 'changeNameSuccess'
+							}, socketid);
 						}
 					} else if (cursor[0] != null) {
 						server.result({
@@ -253,22 +229,16 @@ module.exports = {
 								'status' : 'changePWFailed'
 							}, socketid);
 						} else {
-							var updatePW = function(db, callback) {
-								db.collection('user').updateOne(
-									doc,
-									{
-										$set: { 'pw' : msg.pw }
-									}, function(err, results) {
-									callback();
-								});
-								server.result({
-									'status' : 'changePWSuccess'
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updatePW(db, function() {
-								});
+							db.collection('user').updateOne(
+								doc,
+								{
+									$set: { 'pw' : msg.pw }
+								}, function(err, results) {
+								callback();
 							});
+							server.result({
+								'status' : 'changePWSuccess'
+							}, socketid);
 						}
 					} else if (cursor[0] != null) {
 						server.result({

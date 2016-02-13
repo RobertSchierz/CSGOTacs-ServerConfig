@@ -67,28 +67,22 @@ module.exports = {
 								}, socketid);
 							} else {
 								//user wird in 'member' array eingetragen
-								var updateMember = function(db, callback) {
-									db.collection('groups').updateOne(
-										doc,
-										{
-											$push: { member: msg.user }
-										}, function(err, results) {
-										callback();
-									});
-									group.getGroups({'user': msg.user, 'authGroup': true}, socketid, mongo);
-									/*
-									server.result({
-										'status' : 'authGroupSuccess',
-										'member' : doc.member,
-										'admin' : doc.admin,
-										'mods' : doc.mods
-									}, socketid)
-									*/
-								};
-								mongo(function(err, db) {
-									updateMember(db, function() {
-									});
+								db.collection('groups').updateOne(
+									doc,
+									{
+										$push: { member: msg.user }
+									}, function(err, results) {
+									callback();
 								});
+								group.getGroups({'user': msg.user, 'authGroup': true}, socketid, mongo);
+								/*
+								server.result({
+									'status' : 'authGroupSuccess',
+									'member' : doc.member,
+									'admin' : doc.admin,
+									'mods' : doc.mods
+								}, socketid)
+								*/
 							}
 						} else if (cursor[0] != null) {
 							server.result({
@@ -117,44 +111,37 @@ module.exports = {
 		var group = require('./group.js');
 		var groups = [];
 		var getGroups = function(db, callback) {
-			var findGroups = function(db, callback) {
-				var cursor = db.collection('groups').find({ "member": msg.user })
-				cursor.each(function(err, doc) {
-					if (doc != null) {
-						groups.push({
-							'name' : doc.name,
-							'member' : doc.member,
-							'admin' : doc.admin,
-							'mods' : doc.mods
-						});
-						expire.expireTac(doc.name, mongo);
-						expire.expire(doc.name, mongo);
-					} else {
-						if(msg.deleteAccount == undefined) {
-							var status;
-							if(msg.authGroup == undefined) {
-								status = 'provideGroups';
-							} else {
-								status = 'authGroupSuccess';
-							}
-							server.result({
-								'status' : status,
-								'groups' : groups
-							}, socketid);
+			var cursor = db.collection('groups').find({ "member": msg.user })
+			cursor.each(function(err, doc) {
+				if (doc != null) {
+					groups.push({
+						'name' : doc.name,
+						'member' : doc.member,
+						'admin' : doc.admin,
+						'mods' : doc.mods
+					});
+					expire.expireTac(doc.name, mongo);
+					expire.expire(doc.name, mongo);
+				} else {
+					if(msg.deleteAccount == undefined) {
+						var status;
+						if(msg.authGroup == undefined) {
+							status = 'provideGroups';
 						} else {
-							groups.forEach(function(i) {
-								console.log(i.name);
-								group.leaveGroup({'name': i.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
-							});
+							status = 'authGroupSuccess';
 						}
-
-						callback();
+						server.result({
+							'status' : status,
+							'groups' : groups
+						}, socketid);
+					} else {
+						groups.forEach(function(i) {
+							console.log(i.name);
+							group.leaveGroup({'name': i.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
+						});
 					}
-				});
-			};
-			mongo(function(err, db) {
-				findGroups(db, function() {
-				});
+					callback();
+				}
 			});
 		};
 		mongo(function(err, db) {
@@ -180,28 +167,22 @@ module.exports = {
 							if(doc.member.length == 1) {
 								group.deleteGroup({'name': msg.name, 'user': msg.user, 'lastUser': true}, socketid, mongo);
 							} else {
-								var updateMember = function(db, callback) {
-									db.collection('groups').updateOne(
-										doc,
-										{
-											$pull: { member: msg.user, mods: msg.user }
-										}, function(err, results) {
-										callback();
-									});
-									if(msg.deleteAccount == undefined) {
-										server.result({
-											'status' : 'leaveGroupSuccess',
-											'group' : msg.name,
-											'user' : msg.user
-										}, socketid);
-									} else {
-										callback();
-									}
-								};
-								mongo(function(err, db) {
-									updateMember(db, function() {
-									});
+								db.collection('groups').updateOne(
+									doc,
+									{
+										$pull: { member: msg.user, mods: msg.user }
+									}, function(err, results) {
+									callback();
 								});
+								if(msg.deleteAccount == undefined) {
+									server.result({
+										'status' : 'leaveGroupSuccess',
+										'group' : msg.name,
+										'user' : msg.user
+									}, socketid);
+								} else {
+									callback();
+								}
 							}
 						} else if (cursor[0] != null) {
 							server.result({
@@ -238,24 +219,18 @@ module.exports = {
 					if(doc != null) {
 						if (doc.mods.indexOf(msg.user) <= -1) {
 							//user wird in 'mods' array eingetragen
-							var updateMods = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$push: { mods: msg.user }
-									}, function(err, results) {
-									callback();
-								});
-								server.result({
-									'status' : 'setGroupModSuccess',
-									'user' : msg.user,
-									'group' : msg.name
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updateMods(db, function() {
-								});
+							db.collection('groups').updateOne(
+								doc,
+								{
+									$push: { mods: msg.user }
+								}, function(err, results) {
+								callback();
 							});
+							server.result({
+								'status' : 'setGroupModSuccess',
+								'user' : msg.user,
+								'group' : msg.name
+							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
 								'status' : 'setGroupModFailed',
@@ -291,24 +266,18 @@ module.exports = {
 					if(doc != null) {
 						if (doc.mods.indexOf(msg.user) > -1) {
 							//user wird in 'mods' array eingetragen
-							var updateMods = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$pull: { mods: msg.user }
-									}, function(err, results) {
-									callback();
-								});
-								server.result({
-									'status' : 'unsetGroupModSuccess',
-									'user' : msg.user,
-									'group' : msg.name
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updateMods(db, function() {
-								});
+							db.collection('groups').updateOne(
+								doc,
+								{
+									$pull: { mods: msg.user }
+								}, function(err, results) {
+								callback();
 							});
+							server.result({
+								'status' : 'unsetGroupModSuccess',
+								'user' : msg.user,
+								'group' : msg.name
+							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
 								'status' : 'unsetGroupModFailed',
@@ -344,24 +313,18 @@ module.exports = {
 					if(doc != null) {
 						if ((doc.admin == msg.user) || (doc.mods.indexOf(msg.user) > -1)) {
 							//user wird aus gruppe entfernt
-							var updateMember = function(db, callback) {
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$pull: { member: msg.kick, mods: msg.kick }
-									}, function(err, results) {
-									callback();
-								});
-								server.result({
-									'status' : 'kickUserSuccess',
-									'group' : msg.name,
-									'kick' : msg.kick
-								}, socketid);
-							};
-							mongo(function(err, db) {
-								updateMember(db, function() {
-								});
+							db.collection('groups').updateOne(
+								doc,
+								{
+									$pull: { member: msg.kick, mods: msg.kick }
+								}, function(err, results) {
+								callback();
 							});
+							server.result({
+								'status' : 'kickUserSuccess',
+								'group' : msg.name,
+								'kick' : msg.kick
+							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
 								'status' : 'kickUserFailed',
@@ -396,9 +359,7 @@ module.exports = {
 				cursor.each(function(err, doc) {
 					if(doc != null) {
 						if (doc.admin.indexOf(msg.user) > -1) {
-							var deleteGroup = function(db, callback) {
-								db.collection('groups').deleteOne(doc);
-							};
+							db.collection('groups').deleteOne(doc);
 							if(msg.lastUser == undefined) {
 								server.result({
 									'status' : 'deleteGroupSuccess',
@@ -406,10 +367,6 @@ module.exports = {
 									'group' : msg.name
 								}, socketid);
 							}
-							mongo(function(err, db) {
-								deleteGroup(db, function() {
-								});
-							});
 						} else if (cursor[0] != null) {
 							server.result({
 								'status' : 'deleteGroupFailed',
@@ -422,13 +379,7 @@ module.exports = {
 					}
 				});
 				cursorTacs.each(function(err, docTac) {
-					var deleteTacs = function(db, callback) {
-						db.collection('saved').deleteOne(docTac);
-					};
-					mongo(function(err, db) {
-						deleteTacs(db, function() {
-						});
-					});
+					db.collection('saved').deleteOne(docTac);
 				});
 			};
 			mongo(function(err, db) {

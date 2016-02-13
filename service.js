@@ -5,7 +5,6 @@ var io = require('socket.io')(http);
 var user = require('./data/user.js');
 var tac = require('./data/tac.js');
 var group = require('./data/group.js');
-var result = require('./data/result.js');
 var mongo = require('./mongodb.js');
 var stats = require('./data/stats.js');
 
@@ -35,12 +34,10 @@ module.exports = {
 	
 	//stellt die ergebnisse der datenbankanfragen zu einem 'status' json zusammen und schickt diese an den client
 	result: function(status, socketid) {
-		var result = require('./data/result.js');
-		var getResult = result.setStatus(status);
-		if(status.room != null) {
-			io.sockets.connected[socketid].nsp.to(status.room).emit('status', getResult);
+		if(status.room != undefined) {
+			io.sockets.connected[socketid].nsp.to(status.room).emit('status', status);
 		} else {
-			io.sockets.connected[socketid].emit('status', getResult);
+			io.sockets.connected[socketid].emit('status', status);
 		}
 	},
 	
@@ -182,25 +179,6 @@ io.on('connection', function(socket){
 		var data = JSON.parse(msg);
 		socket.broadcast.to(data.room).emit('status', data);
 	});
-	
-	
-	
-	
-	//ENTWICKLUNG: TEST DER LIVE-VERBINDUNG ZWISCHEN DEN APPS
-	socket.on('appTest', function(){
-		socket.join('appTest');
-		var clients = Object.keys(io.sockets.adapter.rooms['appTest']);
-		user.getLive({"room": "appTest"}, clients, socket.id, mongo);
-		//socket.broadcast.to('appTest').emit();
-	});
-	
-	socket.on('json', function(msg){
-		socket.broadcast.to('appTest').emit('json', msg);
-	});
-	
-	
-	
-	
 	
 });
 
