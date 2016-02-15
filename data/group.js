@@ -1,39 +1,40 @@
 module.exports = {
 	
-	createGroup: function(msg, socketid, mongo) {
+	createGroup: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
-		console.log(msg);
-		if ((msg.name != '') && (msg.pw != '')) {
+		if (data.name != null && data.pw != null) {
 			var createGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.count(function(err, doc) {
 					if (doc == 0) {
 						var member = [];
 						var mods = [];
-						member.push(msg.user);
-						db.collection('groups').insertOne( {
-							'name' : msg.name,
-							'pw' : msg.pw,
-							'member' : member,
-							'admin' : msg.user,
-							'mods' : mods
-						},
-						function(err, result) {
-							callback(result);
+						member.push(data.user);
+						bcrypt.genSalt(10, function(err, salt) {
+							bcrypt.hash(data.pw, salt, function(err, hash) {
+								db.collection('groups').insertOne( {
+									'name' : data.name,
+									'pw' : hash,
+									'member' : member,
+									'admin' : data.user,
+									'mods' : mods
+								},
+								function(err, result) {
+									callback(result);
+								});
+								expire.expire(data.name, mongo);
+								server.result({
+									'status' : 'createGroupSuccess',
+									'group' : data.name,
+									'user' : data.user
+								}, socketid);
+							});
 						});
-						expire.expire(msg.name, mongo);
-						server.result({
-							'status' : 'createGroupSuccess',
-							'group' : msg.name,
-							'user' : msg.user
-						}, socketid);
 					} else {
 						server.result({
-							'status' : 'createGroupFailed',
-							'group' : msg.name,
-							'user' : msg.user
+							'status' : 'createGroupFailed'
 						}, socketid);
 					}
 				});
@@ -49,47 +50,56 @@ module.exports = {
 		}
 	},
 	
-	authGroup: function(msg, socketid, mongo) {
+	authGroup: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var group = require('./group.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.pw != '')) {
+		if (data.name != null && data.pw != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
+				var validGroup;
 				cursor.each(function(err, doc) {
 					//prüft ob gruppe existiert und stellt sicher das der user noch nicht eingetragen wurde
 					if(doc != null) {
-						if (doc.member.indexOf(msg.user) <= -1) {
-							if (doc.pw != msg.pw) {
-								server.result({
-									'status' : 'authGroupFailed'
-								}, socketid);
-							} else {
-								//user wird in 'member' array eingetragen
-								db.collection('groups').updateOne(
-									doc,
-									{
-										$push: { member: msg.user }
-									}, function(err, results) {
-									callback();
-								});
-								group.getGroups({'user': msg.user, 'authGroup': true}, socketid, mongo);
-								/*
-								server.result({
-									'status' : 'authGroupSuccess',
-									'member' : doc.member,
-									'admin' : doc.admin,
-									'mods' : doc.mods
-								}, socketid)
-								*/
-							}
+						validGroup = true;
+						if (doc.member.indexOf(data.user) <= -1) {
+							bcrypt.compare(data.pw, doc.pw, function(err, res) {
+								if (res == true) {
+									//user wird in 'member' array eingetragen
+									db.collection('groups').updateOne(
+										doc,
+										{
+											$push: { member: data.user }
+										}, function(err, results) {
+										callback();
+									});
+									group.getGroups({'user': data.user, 'authGroup': true}, socketid, mongo);
+									/*
+									server.result({
+										'status' : 'authGroupSuccess',
+										'member' : doc.member,
+										'admin' : doc.admin,
+										'mods' : doc.mods
+									}, socketid)
+									*/
+								} else {
+									server.result({
+										'status' : 'authGroupFailed'
+									}, socketid);
+								}
+							});
 						} else if (cursor[0] != null) {
 							server.result({
 								'status' : 'authGroupFailed'
 							}, socketid);
 						}
 					} else {
+						if(validGroup == null) {
+							server.result({
+								'status' : 'authGroupFailed'
+							}, socketid);
+						}
 						callback();
 					}
 				});
@@ -105,80 +115,85 @@ module.exports = {
 		} 
 	},
 	
-	getGroups: function(msg, socketid, mongo) {
+	getGroups: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
 		var group = require('./group.js');
 		var groups = [];
-		var getGroups = function(db, callback) {
-			var cursor = db.collection('groups').find({ "member": msg.user })
-			cursor.each(function(err, doc) {
-				if (doc != null) {
-					groups.push({
-						'name' : doc.name,
-						'member' : doc.member,
-						'admin' : doc.admin,
-						'mods' : doc.mods
-					});
-					expire.expireTac(doc.name, mongo);
-					expire.expire(doc.name, mongo);
-				} else {
-					if(msg.deleteAccount == undefined) {
-						var status;
-						if(msg.authGroup == undefined) {
-							status = 'provideGroups';
-						} else {
-							status = 'authGroupSuccess';
-						}
-						server.result({
-							'status' : status,
-							'groups' : groups
-						}, socketid);
-					} else {
-						groups.forEach(function(i) {
-							console.log(i.name);
-							group.leaveGroup({'name': i.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
+		if(data.user != null) {
+			var getGroups = function(db, callback) {
+				var cursor = db.collection('groups').find({ "member": data.user })
+				cursor.each(function(err, doc) {
+					if (doc != null) {
+						groups.push({
+							'name' : doc.name,
+							'member' : doc.member,
+							'admin' : doc.admin,
+							'mods' : doc.mods
 						});
+						expire.expireTac(doc.name, mongo);
+						expire.expire(doc.name, mongo);
+					} else {
+						if(data.deleteAccount == undefined) {
+							var status;
+							if(data.authGroup == undefined) {
+								status = 'provideGroups';
+							} else {
+								status = 'authGroupSuccess';
+							}
+							server.result({
+								'status' : status,
+								'groups' : groups
+							}, socketid);
+							callback();
+						} else {
+							groups.forEach(function(i) {
+								group.leaveGroup({'name': i.name, 'user': data.user, 'deleteAccount': true}, socketid, mongo);
+							});
+						}
+						callback();
 					}
-					callback();
-				}
+				});
+			};
+			mongo(function(err, db) {
+				getGroups(db, function() {
+				});
 			});
-		};
-		mongo(function(err, db) {
-			getGroups(db, function() {
-			});
-		});
+		} else {
+			server.result({
+				'status' : 'getGroupsFailed'
+			}, socketid);
+		}
 	},
 	
-	leaveGroup: function(msg, socketid, mongo) {
+	leaveGroup: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var group = require('./group.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
+		if (data.name != null && data.user != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
-					console.log(doc);
 					//prüft ob gruppe existiert und stellt sicher das der user ein mitglied ist
 					if(doc != null) {
-						if (doc.member.indexOf(msg.user) > -1) {
+						if (doc.member.indexOf(data.user) > -1) {
 							//user wird aus 'member' array entfernt
 							if(doc.member.length == 1) {
-								group.deleteGroup({'name': msg.name, 'user': msg.user, 'lastUser': true}, socketid, mongo);
+								group.deleteGroup({'name': data.name, 'user': data.user}, socketid, mongo);
 							} else {
 								db.collection('groups').updateOne(
 									doc,
 									{
-										$pull: { member: msg.user, mods: msg.user }
+										$pull: { member: data.user, mods: data.user }
 									}, function(err, results) {
 									callback();
 								});
-								if(msg.deleteAccount == undefined) {
+								if(data.deleteAccount == undefined) {
 									server.result({
 										'status' : 'leaveGroupSuccess',
-										'group' : msg.name,
-										'user' : msg.user
+										'group' : data.name,
+										'user' : data.user
 									}, socketid);
 								} else {
 									callback();
@@ -186,9 +201,7 @@ module.exports = {
 							}
 						} else if (cursor[0] != null) {
 							server.result({
-								'status' : 'leaveGroupFailed',
-								'group' : msg.name,
-								'user' : msg.user
+								'status' : 'leaveGroupFailed'
 							}, socketid);
 						}
 					} else {
@@ -207,35 +220,33 @@ module.exports = {
 		} 
 	},
 	
-	setGroupMod: function(msg, socketid, mongo) {
+	setGroupMod: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
+		if (data.name != null && data.user != null && data.set != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
-						if (doc.mods.indexOf(msg.user) <= -1) {
+						if (doc.mods.indexOf(data.user) > -1 || doc.admin == data.user) {
 							//user wird in 'mods' array eingetragen
 							db.collection('groups').updateOne(
 								doc,
 								{
-									$push: { mods: msg.user }
+									$push: { mods: data.set }
 								}, function(err, results) {
 								callback();
 							});
 							server.result({
 								'status' : 'setGroupModSuccess',
-								'user' : msg.user,
-								'group' : msg.name
+								'user' : data.set,
+								'group' : data.name
 							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
-								'status' : 'setGroupModFailed',
-								'user' : msg.user,
-								'group' : msg.name
+								'status' : 'setGroupModFailed'
 							}, socketid);
 						}
 					} else {
@@ -254,35 +265,33 @@ module.exports = {
 		} 
 	},
 	
-	unsetGroupMod: function(msg, socketid, mongo) {
+	unsetGroupMod: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
+		if (data.name != null && data.user != null && data.unset != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
-						if (doc.mods.indexOf(msg.user) > -1) {
+						if (doc.mods.indexOf(data.user) > -1 || doc.admin == data.user) {
 							//user wird in 'mods' array eingetragen
 							db.collection('groups').updateOne(
 								doc,
 								{
-									$pull: { mods: msg.user }
+									$pull: { mods: data.unset }
 								}, function(err, results) {
 								callback();
 							});
 							server.result({
 								'status' : 'unsetGroupModSuccess',
-								'user' : msg.user,
-								'group' : msg.name
+								'user' : data.unset,
+								'group' : data.name
 							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
-								'status' : 'unsetGroupModFailed',
-								'user' : msg.user,
-								'group' : msg.name
+								'status' : 'unsetGroupModFailed'
 							}, socketid);
 						}
 					} else {
@@ -301,35 +310,33 @@ module.exports = {
 		} 
 	},
 	
-	kickUser: function(msg, socketid, mongo) {
+	kickUser: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != '') && (msg.name != '') && (msg.kick != '')) {
+		if (data.user != null && data.name != null && data.kick != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
+				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
 					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
-						if ((doc.admin == msg.user) || (doc.mods.indexOf(msg.user) > -1)) {
+						if ((doc.admin == data.user) || (doc.mods.indexOf(data.user) > -1)) {
 							//user wird aus gruppe entfernt
 							db.collection('groups').updateOne(
 								doc,
 								{
-									$pull: { member: msg.kick, mods: msg.kick }
+									$pull: { member: data.kick, mods: data.kick }
 								}, function(err, results) {
 								callback();
 							});
 							server.result({
 								'status' : 'kickUserSuccess',
-								'group' : msg.name,
-								'kick' : msg.kick
+								'group' : data.name,
+								'kick' : data.kick
 							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
-								'status' : 'kickUserFailed',
-								'group' : msg.name,
-								'kick' : msg.kick
+								'status' : 'kickUserFailed'
 							}, socketid);
 						}
 					} else {
@@ -348,30 +355,26 @@ module.exports = {
 		} 
 	},
 	
-	deleteGroup: function(msg, socketid, mongo) {
+	deleteGroup: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.name != '') && (msg.user != '')) {
+		if (data.name != null && data.user != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
-				var cursor = db.collection('groups').find( { "name": msg.name } );
-				var cursorTacs = db.collection('saved').find( { 'group': msg.name} );
+				var cursor = db.collection('groups').find( { "name": data.name } );
+				var cursorTacs = db.collection('saved').find( { 'group': data.name} );
 				cursor.each(function(err, doc) {
 					if(doc != null) {
-						if (doc.admin.indexOf(msg.user) > -1) {
+						if (doc.admin == data.user) {
 							db.collection('groups').deleteOne(doc);
-							if(msg.lastUser == undefined) {
-								server.result({
-									'status' : 'deleteGroupSuccess',
-									'user' : msg.user,
-									'group' : msg.name
-								}, socketid);
-							}
+							server.result({
+								'status' : 'deleteGroupSuccess',
+								'user' : data.user,
+								'group' : data.name
+							}, socketid);
 						} else if (cursor[0] != null) {
 							server.result({
-								'status' : 'deleteGroupFailed',
-								'user' : msg.user,
-								'group' : msg.name
+								'status' : 'deleteGroupFailed'
 							}, socketid);
 						}
 					} else {
@@ -392,5 +395,58 @@ module.exports = {
 			}, socketid);
 		} 
 	}
+	
+	/*DELETEGROUP MIT PASSWORT
+	deleteGroup: function(data, socketid, mongo, bcrypt) {
+		var server = require('../service.js');
+		//stellt sicher das felder nicht leer sind
+		if (data.name != null && data.user != null && data.pw != null) {
+			//durchsucht die collection 'groups' nach der entsprechenden gruppe
+			var findGroup = function(db, callback) {
+				var cursor = db.collection('groups').find( { "name": data.name } );
+				var cursorTacs = db.collection('saved').find( { 'group': data.name} );
+				cursor.each(function(err, doc) {
+					if(doc != null) {
+						if (doc.admin.indexOf(data.user) > -1) {
+							bcrypt.compare(data.pw, doc.pw, function(err, res) {
+								if(res == true) {
+									db.collection('groups').deleteOne(doc);
+									if(data.lastUser == undefined) {
+										server.result({
+											'status' : 'deleteGroupSuccess',
+											'user' : data.user,
+											'group' : data.name
+										}, socketid);
+									}
+								} else {
+									server.result({
+										'status' : 'deleteGroupFailed'
+									}, socketid);
+								}
+							});
+						} else if (cursor[0] != null) {
+							server.result({
+								'status' : 'deleteGroupFailed'
+							}, socketid);
+						}
+					} else {
+						callback();
+					}
+				});
+				cursorTacs.each(function(err, docTac) {
+					db.collection('saved').deleteOne(docTac);
+				});
+			};
+			mongo(function(err, db) {
+				findGroup(db, function() {
+				});
+			});
+		} else {
+			server.result({
+				'status' : 'deleteGroupFailed'
+			}, socketid);
+		} 
+	}
+	*/
 	
 };

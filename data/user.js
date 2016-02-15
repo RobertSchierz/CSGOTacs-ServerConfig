@@ -1,31 +1,34 @@
 module.exports = {
 	
-	reg: function(msg, socketid, mongo) {
+	reg: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+		if (data.user != null && data.pw != null) {
 			var regUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.count(function(err, doc) {
 					if (doc == 0) {
-						db.collection('user').insertOne( {
-							'user' : msg.user,
-							'pw' : msg.pw,
-							'expireAt' : server.setExpire(new Date())
-						},
-						function(err, result) {
-							callback(result);
+						bcrypt.genSalt(10, function(err, salt) {
+							bcrypt.hash(data.pw, salt, function(err, hash) {
+								db.collection('user').insertOne( {
+									'user' : data.user,
+									'pw' : hash,
+									'expireAt' : server.setExpire(new Date())
+								},
+								function(err, result) {
+									callback(result);
+								});
+								expire.expire(data, mongo);
+								server.result({
+									'status' : 'regSuccess',
+									'user' : data.user
+								}, socketid);
+							});
 						});
-						expire.expire(msg, mongo);
-						server.result({
-							'status' : 'regSuccess',
-							'user' : msg.user
-						}, socketid);
 					} else {
 						server.result({
-							'status' : 'regFailed',
-							'user' : msg.user
+							'status' : 'regFailed'
 						}, socketid);
 					}
 				});
@@ -42,74 +45,50 @@ module.exports = {
 		
 	},
 	
-	regRest: function(msg, mongo) {
-		//var server = require('../service.js');
-		var expire = require('./expire.js');
-		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
-			var regUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
-				cursor.count(function(err, doc) {
-					if (doc == 0) {
-						db.collection('user').insertOne( {
-							'user' : msg.user,
-							'pw' : msg.pw,
-							'expireAt' : server.setExpire(new Date())
-						},
-						function(err, result) {
-							callback(result);
-						});
-						expire.expire(msg, mongo);
-						return 201;
-					} else {
-						return 500;
-					}
-				});
-			};
-			mongo(function(err, db) {
-				regUser(db, function() {
-				});
-			});
-		} else {
-			return 500;
-		}
-	},
-	
-	auth: function(msg, socketid, mongo) {
+	auth: function(data, socketid, mongo, bcrypt) {
 		
 		//var mongo = require('../mongodb.js');
 		var server = require('../service.js');
 		var expire = require('./expire.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+		if (data.user != null && data.pw != null) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
+				var validUser;
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						if (doc.pw != msg.pw) {
-							//authentifizierung fehlgeschlagen
+						validUser = true;
+						bcrypt.compare(data.pw, doc.pw, function(err, res) {
+							if (res == true) {
+								//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
+								db.collection('user').updateOne(
+									doc,
+									{
+										$set: { 'socketid' : socketid }
+									}, function(err, results) {
+									callback();
+								});
+								expire.expire(data, mongo);
+								expire.expireTac(data, mongo);
+								//authentifizierung erfolgreich
+								server.result ({
+									'status' : 'authSuccess',
+									'user' : data.user
+								}, socketid);
+							} else {
+								//authentifizierung fehlgeschlagen
+								server.result({
+									'status' : 'authFailed'
+								}, socketid);
+							}
+						});
+					} else {
+						if(validUser == null) {
 							server.result({
 								'status' : 'authFailed'
 							}, socketid);
-						} else {
-							//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
-							db.collection('user').updateOne(
-								doc,
-								{
-									$set: { 'socketid' : socketid }
-								}, function(err, results) {
-								callback();
-							});
-							expire.expire(msg, mongo);
-							expire.expireTac(msg, mongo);
-							//authentifizierung erfolgreich
-							server.result ({
-								'status' : 'authSuccess',
-								'user' : msg.user
-							}, socketid);
 						}
-					} else {
 						callback();
 					}
 				});
@@ -126,34 +105,46 @@ module.exports = {
 		
 	},
 	
-	deleteAccount: function(msg, socketid, mongo) {
+	deleteAccount: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var group = require('./group.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+		if (data.user != null && data.pw != null) {
 			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
-				var cursorTac = db.collection('saved').find( { "user": msg.user } );
-				var cursorGroup = db.collection('groups').find( { 'member': msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
+				var cursorTac = db.collection('saved').find( { "user": data.user } );
+				var cursorGroup = db.collection('groups').find( { 'member': data.user } );
+				var passwordValid = false;
 				cursor.each(function(err, doc) {
 					if(doc != null) {
-						db.collection('user').deleteOne(doc);
-						server.result({
-							'status' : 'deleteAccountSuccess'
-						}, socketid);
+						bcrypt.compare(data.pw, doc.pw, function(err, res) {
+							if(res == true) {
+								passwordValid = res;
+								db.collection('user').deleteOne(doc);
+								server.result({
+									'status' : 'deleteAccountSuccess'
+								}, socketid);
+							}
+						});
 					} else {
 						callback();
 					}
 				});
-				cursorTac.each(function(err, docTac) {
-					db.collection('saved').deleteOne(docTac);
-				});
-				cursorGroup.each(function(err, docGroup) {
-					if(docGroup != null) {
-						group.leaveGroup({'name': docGroup.name, 'user': msg.user, 'deleteAccount': true}, socketid, mongo);
-					}
-				});
+				if(passwordValid == true) {
+					cursorTac.each(function(err, docTac) {
+						db.collection('saved').deleteOne(docTac);
+					});
+					cursorGroup.each(function(err, docGroup) {
+						if(docGroup != null) {
+							group.leaveGroup({'name': docGroup.name, 'user': data.user, 'deleteAccount': true}, socketid, mongo);
+						}
+					});
+				} else {
+					server.result({
+						'status' : 'deleteAccountFailed'
+					}, socketid);
+				}
 			};
 			mongo(function(err, db) {
 				findUser(db, function() {
@@ -166,33 +157,34 @@ module.exports = {
 		} 
 	},
 	
-	changeName: function(msg, socketid, mongo) {
+	changeName: function(data, socketid, mongo, bcrypt) {
 		
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+		if (data.user != null && data.pw != null && data.edit != null) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						if (doc.pw != msg.pw) {
-							//authentifizierung fehlgeschlagen
-							server.result({
-								'status' : 'changeNameFailed'
-							}, socketid);
-						} else {
-							db.collection('user').updateOne(
-								doc,
-								{
-									$set: { 'user' : msg.user }
-								}, function(err, results) {
-								callback();
-							});
-							server.result({
-								'status' : 'changeNameSuccess'
-							}, socketid);
-						}
+						bcrypt.compare(data.pw, doc.pw, function(err, res) {
+							if (res == true) {
+								db.collection('user').updateOne(
+									doc,
+									{
+										$set: { 'user' : data.user }
+									}, function(err, results) {
+									callback();
+								});
+								server.result({
+									'status' : 'changeNameSuccess'
+								}, socketid);
+							} else {
+								server.result({
+									'status' : 'changeNameFailed'
+								}, socketid);
+							}
+						});
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'changeNameFailed'
@@ -213,33 +205,41 @@ module.exports = {
 		
 	},
 	
-	changePW: function(msg, socketid, mongo) {
+	changePW: function(data, socketid, mongo, bcrypt) {
 		
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (msg.pw != null && msg.pw != undefined)) {
+		if (data.user != null && data.pw != null && data.edit != null) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {
-					if (doc != null) {
-						if (doc.pw != msg.pw) {
-							//authentifizierung fehlgeschlagen
-							server.result({
-								'status' : 'changePWFailed'
-							}, socketid);
-						} else {
-							db.collection('user').updateOne(
-								doc,
-								{
-									$set: { 'pw' : msg.pw }
-								}, function(err, results) {
-								callback();
-							});
-							server.result({
-								'status' : 'changePWSuccess'
-							}, socketid);
-						}
+					if(doc != null) {
+						bcrypt.compare(data.pw, doc.pw, function(err, res) {
+							if (res == true) {
+								if (doc.pw != data.pw) {
+									//authentifizierung fehlgeschlagen
+									server.result({
+										'status' : 'changePWFailed'
+									}, socketid);
+								} else {
+									db.collection('user').updateOne(
+										doc,
+										{
+											$set: { 'pw' : data.pw }
+										}, function(err, results) {
+										callback();
+									});
+									server.result({
+										'status' : 'changePWSuccess'
+									}, socketid);
+								}
+							} else {
+								server.result({
+										'status' : 'changePWFailed'
+								}, socketid);
+							}
+						});
 					} else if (cursor[0] != null) {
 						server.result({
 							'status' : 'changePWFailed'
@@ -260,53 +260,57 @@ module.exports = {
 		
 	},
 	
-	getLive: function(msg, clients, socketid, mongo) {
+	getLive: function(data, clients, socketid, mongo) {
 		
 		var server = require('../service.js');
-		var findUser = function(db, callback) {
-			var liveUser = [];
-			var counter = clients.length;
-			var result = 
-			setTimeout(function() {
-				clients.forEach(function(client) {
-					var cursor = db.collection('user').find( { 'socketid': client } );
-					cursor.each(function(err, doc) {
-						if(doc != null) {
-							liveUser.push(doc.user);
-							if(counter == 0) {
-								server.result({
-									'status' : 'connectedClients',
-									'room' : msg.room,
-									'live' : liveUser
-								}, socketid);
+		if (data.room != null) {
+			var findUser = function(db, callback) {
+				var liveUser = [];
+				var counter = clients.length;
+				var result = 
+				setTimeout(function() {
+					clients.forEach(function(client) {
+						var cursor = db.collection('user').find( { 'socketid': client } );
+						cursor.each(function(err, doc) {
+							if(doc != null) {
+								liveUser.push(doc.user);
+								if(counter == 0) {
+									server.result({
+										'status' : 'connectedClients',
+										'room' : data.room,
+										'live' : liveUser
+									}, socketid);
+								}
+							} else {
+								counter--;
+								if(counter == 0) {
+									server.result({
+										'status' : 'connectedClients',
+										'room' : data.room,
+										'live' : liveUser
+									}, socketid);
+								}
 							}
-						} else {
-							counter--;
-							if(counter == 0) {
-								server.result({
-									'status' : 'connectedClients',
-									'room' : msg.room,
-									'live' : liveUser
-								}, socketid);
-							}
-						}
+						});
 					});
+				}, 100);
+			};
+			mongo(function(err, db) {
+				findUser(db, function() {
 				});
-			}, 100);
-		};
-		mongo(function(err, db) {
-			findUser(db, function() {
 			});
-		});
+		} else {
+			
+		}
 		
 	},
 	
-	storeSocketID: function(msg, socketid, mongo) {
+	storeSocketID: function(data, socketid, mongo) {
 		//stellt sicher das felder nicht leer sind
-		if ((msg.user != null && msg.user != undefined) && (socketid != null && socketid != undefined)) {
+		if (data.user != null) {
 			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {
 					db.collection('user').updateOne(
 						doc,

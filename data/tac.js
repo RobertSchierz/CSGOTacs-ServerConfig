@@ -1,20 +1,20 @@
 module.exports = {
 	
-	createTac: function(msg, socketid, mongo) {
+	createTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var expire = require('./expire.js')
-		if ((msg.id != null || msg.id != undefined) && (msg.user != null && msg.user != undefined) && (msg.map != null && msg.map != undefined) && (msg.name != null && msg.name != undefined)) {
+		if (data.id != null && data.user != null && data.map != null && data.name != null && data.x != null && data.y != null && data.drag != null) {
 			var createTac = function(db, callback) {
 				var tacs = [];
 				var newTac = {
-					'id' : msg.id,
-					'user' : msg.user,
-					'map' : msg.map,
-					'name' : msg.name,
-					'group' : msg.group || null,
-					'drag' : msg.drag || [],
-					'x' : msg.x || [],
-					'y' : msg.y || []
+					'id' : data.id,
+					'user' : data.user,
+					'map' : data.map,
+					'name' : data.name,
+					'group' : data.group || null,
+					'drag' : data.drag || [],
+					'x' : data.x || [],
+					'y' : data.y || []
 				};
 				tacs.push(newTac);
 				db.collection('saved').insertOne(newTac,
@@ -22,10 +22,10 @@ module.exports = {
 					callback(result);
 				});
 				
-				if(msg.group == undefined) {
-					expire.expireTac(msg, mongo);
+				if(data.group == undefined) {
+					expire.expireTac(data, mongo);
 				} else {
-					expire.expireTac(msg.group, mongo);
+					expire.expireTac(data.group, mongo);
 				}
 				
 				server.result({
@@ -45,25 +45,25 @@ module.exports = {
 		}
 	},
 	
-	bindTac: function(msg, socketid, mongo) {
+	bindTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.id != null && msg.id != undefined) && (msg.group != null && msg.group != undefined)) {
+		if (data.id != null && data.group != null) {
 			var findTac = function(db, callback) {
-				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
+				var cursor = db.collection('saved').find( { "id": parseInt(data.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						db.collection('saved').updateOne(
 							doc,
 							{
-								$set: { 'group' : msg.group }
+								$set: { 'group' : data.group }
 							}, function(err, results) {
 							callback();
 						});
 						server.result({
 							'status' : 'bindTacSuccess',
-							'id' : msg.id,
-							'group' : msg.group
+							'id' : data.id,
+							'group' : data.group
 						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
@@ -85,13 +85,13 @@ module.exports = {
 		} 
 	},
 	
-	changeTac: function(msg, socketid, mongo) {
+	changeTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.id != null && msg.id != undefined) && (msg.drag != null && msg.drag != undefined) && (msg.x != null && msg.x != undefined) && (msg.y != null && msg.y != undefined)) {
+		if (data.id != null && data.x != null && data.y != null && data.drag != null) {
 			var findTac = function(db, callback) {
 				var tacs = [];
-				var cursor = db.collection('saved').find( { "id": msg.id } );
+				var cursor = db.collection('saved').find( { "id": data.id } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						tacs.push({
@@ -100,14 +100,14 @@ module.exports = {
 							'map' : doc.map, 
 							'name' : doc.name,
 							'group' : doc.group,
-							'drag' : msg.drag,
-							'x' : msg.x,
-							'y' : msg.y
+							'drag' : data.drag,
+							'x' : data.x,
+							'y' : data.y
 						});
 						db.collection('saved').updateOne(
 							doc,
 							{
-								$set: { 'drag' : msg.drag, 'x' : msg.x, 'y' : msg.y }
+								$set: { 'drag' : data.drag, 'x' : data.x, 'y' : data.y }
 							}, function(err, results) {
 							callback();
 						});
@@ -133,33 +133,39 @@ module.exports = {
 		} 
 	},
 	
-	changeTacName: function(msg, socketid, mongo) {
+	changeTacName: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if ((msg.id != '') && (msg.name != '')) {
+		if (data.id != null && data.name != null) {
 			var findTac = function(db, callback) {
 				var name;
-				var cursor = db.collection('saved').find( { "id": parseInt(msg.id) } );
+				var cursor = db.collection('saved').find( { "id": parseInt(data.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
-						name = doc.name;
 						db.collection('saved').updateOne(
 							doc,
 							{
-								$set: { 'name' : msg.name }
+								$set: { 'name' : data.name }
 							}, function(err, results) {
 							callback();
 						});
-						server.result({
-							'status' : 'changeTacNameSuccess',
-							'id' : msg.id,
-							'name' : name
-						}, socketid);
+						if(doc.group != null) {
+							server.result({
+								'status' : 'changeTacNameSuccess',
+								'id' : data.id,
+								'group' : doc.group,
+								'name' : data.name
+							}, socketid);
+						} else {
+							server.result({
+								'status' : 'changeTacNameSuccess',
+								'id' : data.id,
+								'name' : data.name
+							}, socketid);
+						}
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'changeTacNameFailed',
-							'id' : msg.id,
-							'name' : name
+							'status' : 'changeTacNameFailed'
 						}, socketid);
 						callback();
 					}
@@ -176,12 +182,12 @@ module.exports = {
 		}
 	},
 	
-	deleteTac: function(msg, socketid, mongo) {
+	deleteTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		//stellt sicher das felder nicht leer sind
-		if (msg.id != '') {
+		if (data.id != null) {
 			var findTac = function(db, callback) {
-				var cursor = db.collection('saved').find( { 'id': parseInt(msg.id) } );
+				var cursor = db.collection('saved').find( { 'id': parseInt(data.id) } );
 				cursor.each(function(err, doc) {
 					if (doc != null) {
 						db.collection('saved').deleteOne(
@@ -189,12 +195,11 @@ module.exports = {
 						);
 						server.result({
 							'status' : 'deleteTacSuccess',
-							'id' : msg.id
+							'id' : data.id
 						}, socketid);
 					} else if (cursor[0] != null) {
 						server.result({
-							'status' : 'deleteTacFailed',
-							'id' : msg.id
+							'status' : 'deleteTacFailed'
 						}, socketid);
 						callback();
 					}
@@ -211,41 +216,47 @@ module.exports = {
 		} 
 	},
 	
-	getTacs: function(msg, socketid, mongo) {
+	getTacs: function(data, socketid, mongo) {
 		var tacs = [];
 		var server = require('../service.js');
-		var getTacs = function(db, callback) {
-			//alle vom benutzer erstellten maps auslesen und in array pushen
-			var cursor;
-			if (msg.user != undefined) {
-				cursor = db.collection('saved').find( { "user": msg.user } );
-			} else if (msg.group != undefined) {
-				cursor = db.collection('saved').find( { "group": msg.group } );
-			}
-			cursor.each(function(err, doc) {
-				if (doc != null) {
-					tacs.push({
-						'id' : doc.id,
-						'map' : doc.map,
-						'name' : doc.name,
-						'group' : doc.group,
-						'drag' : doc.drag,
-						'x' : doc.x,
-						'y' : doc.y
-					});
-				} else {
-					//übergibt dem client das maps array
-					server.result({
-						'status' : 'provideTacs',
-						'tacs' : tacs
-					}, socketid);
-					callback();
+		if(data.user != null || data.group != null) {
+			var getTacs = function(db, callback) {
+				//alle vom benutzer erstellten maps auslesen und in array pushen
+				var cursor;
+				if (data.user != undefined) {
+					cursor = db.collection('saved').find( { "user": data.user } );
+				} else if (data.group != undefined) {
+					cursor = db.collection('saved').find( { "group": data.group } );
 				}
+				cursor.each(function(err, doc) {
+					if (doc != null) {
+						tacs.push({
+							'id' : doc.id,
+							'map' : doc.map,
+							'name' : doc.name,
+							'group' : doc.group,
+							'drag' : doc.drag,
+							'x' : doc.x,
+							'y' : doc.y
+						});
+					} else {
+						//übergibt dem client das maps array
+						server.result({
+							'status' : 'provideTacs',
+							'tacs' : tacs
+						}, socketid);
+						callback();
+					}
+				});
+			};
+			mongo(function(err, db) {
+				getTacs(db, function() {
+				});
 			});
-		};
-		mongo(function(err, db) {
-			getTacs(db, function() {
-			});
-		});
+		} else {
+			server.result({
+				'status' : 'provideTacsFailed'
+			}, socketid);
+		}
 	}
 };

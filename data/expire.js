@@ -1,13 +1,13 @@
 module.exports = {
 	
 	//setzt das ablaufdatum eines map-dokuments
-	expireTac: function(msg, mongo) {
+	expireTac: function(data, mongo) {
 		var send = require('../service.js');
 		var findTac = function(db, callback) {
-			if(msg.user != undefined) {
-				var cursor = db.collection('saved').find( { "user": msg.user, 'group': null } );
+			if(data.user != undefined) {
+				var cursor = db.collection('saved').find( { "user": data.user, 'group': null } );
 			} else {
-				var cursor = db.collection('saved').find( { "group": msg } );
+				var cursor = db.collection('saved').find( { "group": data } );
 			}
 			cursor.each(function(err, doc) {
 				if (doc != null) {
@@ -30,15 +30,15 @@ module.exports = {
 	},
 	
 	//setzt das ablaufdatum eines user- oder gruppen-dokuments
-	expire: function(msg, mongo) {
+	expire: function(data, mongo) {
 		var send = require('../service.js');
 		var collection = null;
 		var find = function(db, callback) {
-			if(msg.pw != undefined) {
-				var cursor = db.collection('user').find( { "user": msg.user } );
+			if(data.pw != undefined) {
+				var cursor = db.collection('user').find( { "user": data.user } );
 				collection = 'user';
 			} else {
-				var cursor = db.collection('groups').find({ "name": msg })
+				var cursor = db.collection('groups').find({ "name": data })
 				collection = 'groups';
 			}
 			cursor.each(function(err, doc) {
