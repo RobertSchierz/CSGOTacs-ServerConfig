@@ -1,9 +1,17 @@
 module.exports = {
 	
+	/**
+	* Prüft ob ein Gruppenname vergeben ist und erzeugt die neue Gruppe in der collection 'groups'
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	createGroup: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.pw != null) {
 			var createGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
@@ -50,23 +58,28 @@ module.exports = {
 		}
 	},
 	
+	/**
+	* Prüft ob das eingegebene Passwort mit dem der Gruppe übereinstimmt und trägt den User in die Gruppe ein
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	authGroup: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var group = require('./group.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.pw != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				var validGroup;
 				cursor.each(function(err, doc) {
-					//prüft ob gruppe existiert und stellt sicher das der user noch nicht eingetragen wurde
 					if(doc != null) {
 						validGroup = true;
 						if (doc.member.indexOf(data.user) <= -1) {
 							bcrypt.compare(data.pw, doc.pw, function(err, res) {
 								if (res == true) {
-									//user wird in 'member' array eingetragen
 									db.collection('groups').updateOne(
 										doc,
 										{
@@ -115,6 +128,14 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Gibt einem Benutzer alle seine Gruppen zurück
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	getGroups: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
@@ -166,19 +187,24 @@ module.exports = {
 		}
 	},
 	
+	/**
+	* Trägt einen Benutzer aus einer Gruppe aus
+	* Dieser wird aus dem member-Array entfernt, im Falle eines Moderators auch aus dem mods-Array
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	leaveGroup: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var group = require('./group.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.user != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
-					//prüft ob gruppe existiert und stellt sicher das der user ein mitglied ist
 					if(doc != null) {
 						if (doc.member.indexOf(data.user) > -1) {
-							//user wird aus 'member' array entfernt
 							if(doc.member.length == 1) {
 								group.deleteGroup({'name': data.name, 'user': data.user}, socketid, mongo);
 							} else {
@@ -220,18 +246,23 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Prüft ob der ausführende User Administrator oder Moderator einer Gruppe ist
+	* Das ausgewählte Mitglied dieser Gruppe wird in das mods-Array eingetragen
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	setGroupMod: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.user != null && data.set != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
-					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if (doc.mods.indexOf(data.user) > -1 || doc.admin == data.user) {
-							//user wird in 'mods' array eingetragen
 							db.collection('groups').updateOne(
 								doc,
 								{
@@ -265,18 +296,23 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Prüft ob der ausführende User Administrator oder Moderator einer Gruppe ist
+	* Das ausgewählte Mitglied dieser Gruppe wird aus dem mods-Array entfernt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	unsetGroupMod: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.user != null && data.unset != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
-					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if (doc.mods.indexOf(data.user) > -1 || doc.admin == data.user) {
-							//user wird in 'mods' array eingetragen
 							db.collection('groups').updateOne(
 								doc,
 								{
@@ -310,18 +346,23 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Prüft ob der ausführende User Administrator oder Moderator einer Gruppe ist
+	* Das ausgewählte Mitglied dieser Gruppe wird aus dem mods-Array und dem member-Array entfernt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	kickUser: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null && data.name != null && data.kick != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				cursor.each(function(err, doc) {
-					//prüft ob gruppe existiert und stellt sicher das der user noch kein mod ist
 					if(doc != null) {
 						if ((doc.admin == data.user) || (doc.mods.indexOf(data.user) > -1)) {
-							//user wird aus gruppe entfernt
 							db.collection('groups').updateOne(
 								doc,
 								{
@@ -355,11 +396,18 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Prüft ob der ausführende User Administrator einer ist
+	* Die entsprechende Gruppe wird aus der groups-Collection entfernt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	deleteGroup: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.name != null && data.user != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findGroup = function(db, callback) {
 				var cursor = db.collection('groups').find( { "name": data.name } );
 				var cursorTacs = db.collection('saved').find( { 'group': data.name} );

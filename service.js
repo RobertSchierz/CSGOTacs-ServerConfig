@@ -1,17 +1,25 @@
 var app = require('express')();
 var http = require('http').Server(app);
+
+//für die socket-verbindung
 var io = require('socket.io')(http);
 
+//module werden geladen (enthalten alle nötigen funktionen, werden von socket.io aufgerufen)
 var user = require('./data/user.js');
 var tac = require('./data/tac.js');
 var group = require('./data/group.js');
-var mongo = require('./mongodb.js');
 var stats = require('./data/stats.js');
 
+//herstellen der datenbankverbindung (connect)
+var mongo = require('./mongodb.js');
+
+//zum authentifizieren der clients
 var basicAuth = require('basic-auth');
 
+//fehlermeldung wenn json unvollständig ist
 var errorMessage = 'Your JSON is incomplete!';
 
+//zum hashen der passwörter
 var bcrypt = require('bcryptjs');
 
 //stellt statusseite zur verfügung
@@ -19,23 +27,23 @@ app.get('/', function(req, res){
 	res.sendFile('status.html', {root: __dirname});
 });
 
-//externe funktionen
+//bereitgestellte funktionen
 module.exports = {
 	
-	//stellt die ergebnisse der datenbankanfragen zu einem 'status' json zusammen und schickt diese an den client
+	/**
+	* Sendet das durch eine Funktion erzeugte JavaScript Object an den Client (emit)
+	* ODER
+	* Falls ein 'room' gesetzt wird wird der Status an alle mit diesem Raum verbundenen Clients gesendet (nsp)
+	*
+	* @param status - Das durch eine Funktion erzeugte JavaScript Object
+	* @param socketid - Die Socket ID des verbundenen Clients
+	*/
 	result: function(status, socketid) {
 		if(status.room != undefined) {
 			io.sockets.connected[socketid].nsp.to(status.room).emit('status', status);
 		} else {
 			io.sockets.connected[socketid].emit('status', status);
 		}
-	},
-	
-	//erzeugt das ablaufdatum eines dokuments
-	setExpire: function(date) {
-		var DAYS = 90;
-		var expireDate = new Date(date.setDate(date.getDate() + DAYS));
-		return expireDate;
 	}
 	
 };
@@ -337,7 +345,7 @@ io.on('connection', function(socket){
 				socket.leave(data.room);
 				if(io.sockets.adapter.rooms[data.room] != undefined) {
 					var clients = Object.keys(io.sockets.adapter.rooms[data.room]);
-					user.getLive({'room': data.room}, clients, socket.id, mongo);
+					user.getLive({'room': data.room}, clients, mongo);
 				}
 			} else {
 				socket.emit('error', errorMessage);

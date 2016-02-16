@@ -1,10 +1,18 @@
 module.exports = {
 	
+	/**
+	* Prüft ob ein Benutzername vergeben ist und erzeugt den neuen Benutzer in der collection 'user'
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	reg: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
-		//stellt sicher das felder nicht leer sind
-		if (data.user != null && data.pw != null) {
+		if (data.user != null && data.user != '' && data.pw != null && data.pw != '') {
 			var regUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.count(function(err, doc) {
@@ -45,14 +53,20 @@ module.exports = {
 		
 	},
 	
+	/**
+	* Prüft ob das eingegebene Passwort zu dem Benutzernamen passt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	auth: function(data, socketid, mongo, bcrypt) {
 		
-		//var mongo = require('../mongodb.js');
 		var server = require('../service.js');
 		var expire = require('./expire.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null && data.pw != null) {
-			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				var validUser;
@@ -61,7 +75,6 @@ module.exports = {
 						validUser = true;
 						bcrypt.compare(data.pw, doc.pw, function(err, res) {
 							if (res == true) {
-								//gespeicherte socket id des nutzers wird zwecks authentifizierung durch die des aktuell verbundenen clients ersetzt, letzter login wird gesetzt
 								db.collection('user').updateOne(
 									doc,
 									{
@@ -71,13 +84,11 @@ module.exports = {
 								});
 								expire.expire(data, mongo);
 								expire.expireTac(data, mongo);
-								//authentifizierung erfolgreich
 								server.result ({
 									'status' : 'authSuccess',
 									'user' : data.user
 								}, socketid);
 							} else {
-								//authentifizierung fehlgeschlagen
 								server.result({
 									'status' : 'authFailed'
 								}, socketid);
@@ -105,12 +116,20 @@ module.exports = {
 		
 	},
 	
+	/**
+	* Prüft ob das eingegebene Passwort zu dem Benutzernamen passt
+	* Der entsprechende Benutzer wird aus der user-Collection entfernt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	deleteAccount: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var group = require('./group.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null && data.pw != null) {
-			//durchsucht die collection 'groups' nach der entsprechenden gruppe
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				var cursorTac = db.collection('saved').find( { "user": data.user } );
@@ -157,12 +176,19 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Prüft ob das eingegebene Passwort zu dem Benutzernamen passt
+	* Der Name des entsprechenden Benutzers wird durch den neuen Namen ersetzt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	changeName: function(data, socketid, mongo, bcrypt) {
-		
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null && data.pw != null && data.edit != null) {
-			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {
@@ -202,15 +228,21 @@ module.exports = {
 				'status' : 'changeNameFailed'
 			}, socketid);
 		} 
-		
 	},
 	
+	/**
+	* Prüft ob das eingegebene Passwort zu dem Benutzernamen passt
+	* Das Passwort des entsprechenden Benutzers wird durch das neue Passwort ersetzt
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	* @param bcrypt - Die einbindung von bcrypt, zum ver- und entschlüsseln der Passwörter
+	*/
 	changePW: function(data, socketid, mongo, bcrypt) {
-		
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null && data.pw != null && data.edit != null) {
-			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {
@@ -218,7 +250,6 @@ module.exports = {
 						bcrypt.compare(data.pw, doc.pw, function(err, res) {
 							if (res == true) {
 								if (doc.pw != data.pw) {
-									//authentifizierung fehlgeschlagen
 									server.result({
 										'status' : 'changePWFailed'
 									}, socketid);
@@ -257,11 +288,17 @@ module.exports = {
 				'status' : 'changePWFailed'
 			}, socketid);
 		} 
-		
 	},
 	
+	/**
+	* Gibt allen mit einem Raum vebrundenen clients die Benutzernamen der verbundenen Clients zurück
+	* Die Socket ID's werden mit der user-Collection abgeglichen und so mit den entsprechenden Benutzernamen verknüpft
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param bcrypt - Ein Array welches die Socket ID's der mit einem Raum verbundenen clients enthält
+	* @param mongo - Die Datenbankverbindung
+	*/
 	getLive: function(data, clients, socketid, mongo) {
-		
 		var server = require('../service.js');
 		if (data.room != null) {
 			var findUser = function(db, callback) {
@@ -302,13 +339,10 @@ module.exports = {
 		} else {
 			
 		}
-		
 	},
 	
 	storeSocketID: function(data, socketid, mongo) {
-		//stellt sicher das felder nicht leer sind
 		if (data.user != null) {
-			//durchsucht die collection 'user' nach passerverem benutzer/passwort
 			var findUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.each(function(err, doc) {

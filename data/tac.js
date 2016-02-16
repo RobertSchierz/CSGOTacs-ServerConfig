@@ -1,5 +1,13 @@
 module.exports = {
 	
+	/**
+	* Erstellt eine Taktik in der saved-Collection
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	createTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
 		var expire = require('./expire.js')
@@ -45,9 +53,16 @@ module.exports = {
 		}
 	},
 	
+	/**
+	* Teilt eine von einem User erstellt Taktik mit einer Gruppe
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	bindTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.id != null && data.group != null) {
 			var findTac = function(db, callback) {
 				var cursor = db.collection('saved').find( { "id": parseInt(data.id) } );
@@ -85,9 +100,16 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Aktuallisiert eine bereits erstellte Taktik in der saved-Collection
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	changeTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.id != null && data.x != null && data.y != null && data.drag != null) {
 			var findTac = function(db, callback) {
 				var tacs = [];
@@ -133,9 +155,16 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Ändert den Namen einer bereits gespeicherten Taktik
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	changeTacName: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.id != null && data.name != null) {
 			var findTac = function(db, callback) {
 				var name;
@@ -182,9 +211,16 @@ module.exports = {
 		}
 	},
 	
+	/**
+	* Entfernt eine Taktik aus der saved-Collection
+	* Die Identifizierung findet dabei anhand der ID statt
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	deleteTac: function(data, socketid, mongo) {
 		var server = require('../service.js');
-		//stellt sicher das felder nicht leer sind
 		if (data.id != null) {
 			var findTac = function(db, callback) {
 				var cursor = db.collection('saved').find( { 'id': parseInt(data.id) } );
@@ -216,12 +252,19 @@ module.exports = {
 		} 
 	},
 	
+	/**
+	* Gibt alle von einem User oder einer Gruppe gespeicherten Taktiken zurück
+	* Führt sowohl bei einem failed als auch bei einem success die result-Funktion des Servers aus
+	*
+	* @param data - Das geparste JavaScript Object welches als JSON durch den Client gesendet wurde
+	* @param socketid - Die Socket ID des verbundenen Clients
+	* @param mongo - Die Datenbankverbindung
+	*/
 	getTacs: function(data, socketid, mongo) {
 		var tacs = [];
 		var server = require('../service.js');
 		if(data.user != null || data.group != null) {
 			var getTacs = function(db, callback) {
-				//alle vom benutzer erstellten maps auslesen und in array pushen
 				var cursor;
 				if (data.user != undefined) {
 					cursor = db.collection('saved').find( { "user": data.user } );
@@ -240,7 +283,6 @@ module.exports = {
 							'y' : doc.y
 						});
 					} else {
-						//übergibt dem client das maps array
 						server.result({
 							'status' : 'provideTacs',
 							'tacs' : tacs
@@ -255,7 +297,7 @@ module.exports = {
 			});
 		} else {
 			server.result({
-				'status' : 'provideTacsFailed'
+				'status' : 'getTacsFailed'
 			}, socketid);
 		}
 	}
