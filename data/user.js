@@ -12,7 +12,7 @@ module.exports = {
 	reg: function(data, socketid, mongo, bcrypt) {
 		var server = require('../service.js');
 		var expire = require('./expire.js');
-		if (data.user != null && data.user != '' && data.pw != null && data.pw != '') {
+		if ((data.user != null && data.user != '') && (data.pw != null && data.pw != '')) {
 			var regUser = function(db, callback) {
 				var cursor = db.collection('user').find( { "user": data.user } );
 				cursor.count(function(err, doc) {
@@ -22,7 +22,7 @@ module.exports = {
 								db.collection('user').insertOne( {
 									'user' : data.user,
 									'pw' : hash,
-									'expireAt' : server.setExpire(new Date())
+									'expireAt' : expire.setExpire(new Date())
 								},
 								function(err, result) {
 									callback(result);
